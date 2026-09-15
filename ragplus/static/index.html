@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ragplus</title>
+<style>
+  :root{
+    --bg:#fbfbfa; --fg:#1a1a19; --mut:#6f6f6b; --line:#e3e3df;
+    --mark:#b4552a; --sel:#f2f0eb;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#111110; --fg:#ecebe7; --mut:#8e8d87; --line:#2b2b28;
+          --mark:#d98352; --sel:#1c1c1a;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+  a:hover{border-color:var(--fg)}
+  .num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px;color:var(--mut)}
+
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+         padding:20px 28px 14px;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
+  header .sub{color:var(--mut);font-size:13px}
+  header .status{margin-left:auto;color:var(--mut);font-size:12px;font-family:var(--mono)}
+
+  .wrap{display:grid;grid-template-columns:270px minmax(0,1fr);
+        min-height:calc(100vh - 56px)}
+  @media(max-width:860px){.wrap{grid-template-columns:1fr}}
+  aside{padding:20px 22px 40px;border-right:1px solid var(--line)}
+  main{padding:22px 28px 60px;min-width:0}
+
+  label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+        color:var(--mut);margin:20px 0 6px}
+  aside label:first-of-type{margin-top:0}
+  textarea,input[type=number]{width:100%;font:inherit;color:var(--fg);background:transparent;
+        border:0;border-bottom:1px solid var(--line);padding:4px 0}
+  textarea{resize:vertical;min-height:52px;line-height:1.45}
+  textarea:focus,input:focus{outline:0;border-color:var(--fg)}
+
+  .seg{display:flex;gap:14px;margin:4px 0 0}
+  .seg button{background:0;border:0;padding:2px 0;color:var(--mut);cursor:pointer;
+        font:inherit;font-size:13px;border-bottom:1px solid transparent}
+  .seg button.on{color:var(--fg);border-color:var(--mark)}
+
+  .act{display:flex;gap:16px;margin:24px 0 4px;align-items:baseline;flex-wrap:wrap}
+  .act button{background:0;border:0;padding:0;font:inherit;font-weight:600;
+        color:var(--fg);cursor:pointer;border-bottom:1px solid var(--fg)}
+  .act button.ghost{font-weight:400;color:var(--mut);border-color:var(--line)}
+  .act button:disabled{opacity:.35;cursor:default}
+
+  .rng{display:grid;grid-template-columns:1fr 2.4em;align-items:center;gap:8px}
+  .rng input[type=range]{width:100%;accent-color:var(--mark)}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+  details{margin-top:14px}
+  details>summary{cursor:pointer;color:var(--mut);font-size:12px;list-style:none}
+  details>summary::-webkit-details-marker{display:none}
+  details>summary::before{content:"+ ";font-family:var(--mono)}
+  details[open]>summary::before{content:"\2212 "}
+  .facet{max-height:160px;overflow:auto;margin-top:6px}
+  .facet label{display:flex;gap:8px;align-items:center;margin:0;padding:2px 0;
+        font-size:13px;text-transform:none;letter-spacing:0;color:var(--fg);cursor:pointer}
+  .facet label .n{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--mut)}
+  .chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--fg);cursor:pointer}
+
+  h2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);
+     margin:0 0 10px;font-weight:600}
+  .sect{margin-bottom:34px}
+  .answer{white-space:pre-wrap;font-size:15px;line-height:1.62;max-width:70ch}
+  .note{color:var(--mut);font-size:13px;margin:8px 0}
+  .gaps p{margin:5px 0;padding-left:12px;border-left:2px solid var(--mark);
+          color:var(--mut);font-size:13px}
+  .conf{margin-top:14px;padding-left:12px;border-left:2px solid var(--line);font-size:13px}
+  .conf b{font-weight:600}
+  .conf .why{color:var(--mut)}
+  .conf p{color:var(--mut);margin:6px 0 0;max-width:68ch}
+
+  .hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;
+       padding:11px 0;border-top:1px solid var(--line);align-items:start}
+  .hit:last-child{border-bottom:1px solid var(--line)}
+  .hit.picked{background:var(--sel)}
+  .hit input{margin:4px 0 0}
+  .hit .t{font-weight:500;line-height:1.35}
+  .hit .m{color:var(--mut);font-size:12px;margin-top:2px;font-family:var(--mono)}
+  .hit .s{color:var(--fg);font-size:13.5px;margin-top:5px;max-width:78ch}
+  .hit .w{color:var(--mut);font-size:11.5px;margin-top:4px}
+  .tag{color:var(--mark);font-size:11px;margin-right:8px;white-space:nowrap}
+  pre{white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;color:var(--mut);
+      margin:8px 0 0;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>ragplus</h1>
+  <span class="sub">retrieval, recommendation, and RAG with the context under your control</span>
+  <span class="status" id="status">loading</span>
+</header>
+
+<div class="wrap">
+  <aside>
+    <label for="q">Question</label>
+    <textarea id="q">imagery of urban poverty in the mid-19th century</textarea>
+
+    <div class="seg" id="modes">
+      <button data-mode="precision">precision</button>
+      <button data-mode="explore" class="on">explore</button>
+      <button data-mode="gap">gap</button>
+    </div>
+
+    <div id="fieldWrap" style="display:none">
+      <label>Search over</label>
+      <div class="seg" id="fields">
+        <button data-field="text" class="on">text</button>
+        <button data-field="htr">transcription</button>
+      </div>
+    </div>
+
+    <div class="act">
+      <button id="ask">Ask</button>
+      <button id="askSel" class="ghost" disabled>Ask about marked</button>
+      <button id="search" class="ghost">Search</button>
+    </div>
+
+    <label>lexical &mdash; semantic</label>
+    <div class="rng"><input type="range" id="alpha" min="0" max="1" step=".05" value=".6">
+      <span class="num" id="alpha_v">0.60</span></div>
+    <label>relevance &mdash; diversity</label>
+    <div class="rng"><input type="range" id="diversity" min="0" max="1" step=".05" value=".4">
+      <span class="num" id="diversity_v">0.40</span></div>
+    <label>serendipity</label>
+    <div class="rng"><input type="range" id="serendipity" min="0" max="1" step=".05" value=".4">
+      <span class="num" id="serendipity_v">0.40</span></div>
+
+    <div class="pair">
+      <div><label for="year_from">From</label><input type="number" id="year_from"></div>
+      <div><label for="year_to">To</label><input type="number" id="year_to"></div>
+    </div>
+    <div class="pair">
+      <div><label for="k">Results</label><input type="number" id="k" value="10" min="1" max="50"></div>
+      <div><label>Sources</label>
+        <span class="chk"><input type="checkbox" id="balance" checked> balance</span></div>
+    </div>
+
+    <details><summary>languages</summary><div class="facet" id="f_languages"></div></details>
+    <details><summary>regions</summary><div class="facet" id="f_regions"></div></details>
+    <details><summary>sources</summary><div class="facet" id="f_sources"></div></details>
+    <details><summary>genres</summary><div class="facet" id="f_genres"></div></details>
+  </aside>
+
+  <main>
+    <div class="sect" id="answerSect" style="display:none">
+      <h2>Answer <span class="num" id="answerMeta"></span></h2>
+      <div class="answer" id="answer"></div>
+      <div class="conf" id="conf">
+        <span id="confLine"></span>
+        <details><summary>what confidence means here</summary><p id="confBasis"></p></details>
+      </div>
+      <details><summary>selection, coverage, uncertainty</summary><pre id="artifacts"></pre></details>
+    </div>
+
+    <div class="sect gaps" id="gapSect" style="display:none">
+      <h2>Gaps</h2>
+      <div id="gaps"></div>
+    </div>
+
+    <div class="sect" id="resSect" style="display:none">
+      <h2>Results <span class="num" id="resMeta"></span></h2>
+      <div class="note" id="selNote"></div>
+      <div id="results"></div>
+    </div>
+
+    <div class="sect" id="serSect" style="display:none">
+      <h2>Serendipity</h2>
+      <div id="serendipity"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let META = {}, MODE = "explore", FIELD = "text";
+const MARKED = new Set();
+
+const PRESETS = {
+  precision:{alpha:.75,diversity:.1,serendipity:0,balance:false},
+  explore:  {alpha:.6, diversity:.4,serendipity:.4,balance:true},
+  gap:      {alpha:.5, diversity:.7,serendipity:.7,balance:true},
+};
+
+function setMode(m){
+  MODE = m;
+  const p = PRESETS[m];
+  for (const key of ["alpha","diversity","serendipity"]) {
+    $(key).value = p[key];
+    $(key + "_v").textContent = (+p[key]).toFixed(2);
+  }
+  $("balance").checked = p.balance;
+  document.querySelectorAll("#modes button")
+    .forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+}
+document.querySelectorAll("#modes button").forEach(b => b.onclick = () => setMode(b.dataset.mode));
+document.querySelectorAll("#fields button").forEach(b => b.onclick = () => {
+  FIELD = b.dataset.field;
+  document.querySelectorAll("#fields button")
+    .forEach(x => x.classList.toggle("on", x.dataset.field === FIELD));
+  showStatus();
+});
+["alpha","diversity","serendipity"].forEach(key =>
+  $(key).oninput = () => $(key + "_v").textContent = (+$(key).value).toFixed(2));
+
+function showStatus(){
+  const backend = META.embed_backend === "api" ? "api" : (META.embed_on_gpu ? "gpu" : "cpu");
+  const field = (META.text_fields || []).includes("htr")
+    ? " · " + (FIELD === "htr" ? "transcription" : "text") : "";
+  $("status").textContent =
+    META.corpus_size + " docs · " + META.year_min + "–" + META.year_max
+    + " · " + META.embed_model + " (" + backend + ")" + field
+    + " · " + (META.llm_available ? META.llm_model : "no llm");
+}
+
+const checked = box => [...document.querySelectorAll("#" + box + " input:checked")].map(i => i.value);
+
+function payload(){
+  const num = id => $(id).value === "" ? null : parseInt($(id).value);
+  return {
+    query:$("q").value, mode:MODE, text_field:FIELD,
+    year_from:num("year_from"), year_to:num("year_to"),
+    languages:checked("f_languages"), regions:checked("f_regions"),
+    sources:checked("f_sources"), genres:checked("f_genres"),
+    k:parseInt($("k").value) || 10,
+    alpha:+$("alpha").value, diversity:+$("diversity").value,
+    serendipity:+$("serendipity").value, balance_sources:$("balance").checked,
+  };
+}
+
+function hit(r){
+  const marked = MARKED.has(r.id);
+  const tags = (r.badges || []).map(b => '<span class="tag">' + esc(b) + "</span>").join("");
+  const title = r.url
+    ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.title) + "</a>"
+    : esc(r.title);
+  const lang = r.language && r.language !== "unknown" ? " · " + esc(r.language) : "";
+  return '<div class="hit' + (marked ? " picked" : "") + '">'
+    + '<div><input type="checkbox" data-pick="' + esc(r.id) + '"' + (marked ? " checked" : "")
+    + ' aria-label="mark as evidence"></div>'
+    + "<div>"
+    + '<div class="t">' + title + "</div>"
+    + '<div class="m">' + esc(r.date) + " · " + esc(r.source) + " · " + esc(r.region) + lang + "</div>"
+    + '<div class="s">' + esc(r.snippet) + "</div>"
+    + '<div class="w">' + tags + esc(r.why || "") + "</div>"
+    + "</div>"
+    + '<div class="num">' + (+r.score).toFixed(3) + "</div>"
+    + "</div>";
+}
+
+function bindPicks(){
+  document.querySelectorAll("[data-pick]").forEach(box => box.onchange = () => {
+    box.checked ? MARKED.add(box.dataset.pick) : MARKED.delete(box.dataset.pick);
+    box.closest(".hit").classList.toggle("picked", box.checked);
+    refreshMarked();
+  });
+}
+
+function refreshMarked(){
+  $("askSel").disabled = MARKED.size === 0;
+  $("askSel").textContent = MARKED.size ? "Ask about " + MARKED.size + " marked" : "Ask about marked";
+  $("selNote").textContent = MARKED.size
+    ? MARKED.size + " marked as evidence. Ask about marked answers from these only."
+    : "Mark items to decide the evidence yourself; otherwise the top independent witnesses are used.";
+}
+
+function renderResults(d){
+  $("resSect").style.display = "";
+  $("resMeta").textContent =
+    d.results.length + " of " + d.filtered_count + " matched · pool " + d.pool_size;
+  $("results").innerHTML = d.results.length
+    ? d.results.map(hit).join("")
+    : '<div class="note">Nothing matches this context.</div>';
+  const ser = d.serendipity || [];
+  $("serSect").style.display = ser.length ? "" : "none";
+  $("serendipity").innerHTML = ser.map(hit).join("");
+  bindPicks(); refreshMarked();
+
+  const msgs = (d.gaps && d.gaps.messages) || [];
+  $("gapSect").style.display = msgs.length ? "" : "none";
+  $("gaps").innerHTML = msgs.map(m => "<p>" + esc(m) + "</p>").join("");
+}
+
+async function post(path, body){
+  $("status").textContent = "working";
+  try {
+    const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"},
+                                body:JSON.stringify(body)});
+    if (!r.ok) throw new Error(await r.text());
+    return await r.json();
+  } finally { showStatus(); }
+}
+
+$("search").onclick = async () => {
+  $("answerSect").style.display = "none";
+  renderResults(await post("/api/search", payload()));
+};
+
+async function runAsk(ids){
+  const body = Object.assign({}, payload(), {selected_ids: ids});
+  const d = await post("/api/rag", body);
+  $("answerSect").style.display = "";
+  const sel = d.artifacts.selection;
+  $("answerMeta").textContent =
+    (d.used_llm ? META.llm_model : "extractive") + " · " + d.citations.length
+    + " passages · evidence chosen by " + sel.by
+    + " · confidence " + d.artifacts.confidence;
+  $("answer").textContent = d.answer;
+  const a = d.artifacts;
+  $("confLine").innerHTML = "confidence <b>" + esc(a.confidence) + "</b> "
+    + '<span class="why">' + esc(a.confidence_rationale) + "</span>";
+  $("confBasis").textContent = a.confidence_basis || "";
+  $("artifacts").textContent = JSON.stringify(a, null, 2);
+  renderResults(d);
+}
+$("ask").onclick = () => runAsk([]);
+$("askSel").onclick = () => runAsk([...MARKED]);
+
+function facet(box, items){
+  $(box).innerHTML = items.map(i =>
+    '<label><input type="checkbox" value="' + esc(i.value) + '">'
+    + "<span>" + esc(i.value || "—") + '</span><span class="n">' + i.count + "</span></label>"
+  ).join("");
+}
+
+(async () => {
+  META = await (await fetch("/api/meta")).json();
+  facet("f_languages", META.languages); facet("f_regions", META.regions);
+  facet("f_sources", META.sources); facet("f_genres", META.genres);
+  $("year_from").placeholder = META.year_min;
+  $("year_to").placeholder = META.year_max;
+  if ((META.text_fields || []).includes("htr")) $("fieldWrap").style.display = "";
+  setMode("explore");
+  refreshMarked();
+  showStatus();
+})();
+</script>
+</body>
+</html>
