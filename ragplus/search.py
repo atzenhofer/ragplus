@@ -31,7 +31,7 @@ class Context:
     alpha: float = 0.6                    # lexical(0) .. dense(1)
     diversity: float = 0.3                # MMR lambda: relevance(0) .. diversity(1)
     serendipity: float = 0.3              # 0 .. 1
-    balance_sources: bool = True          # anti-popularity / due weight
+    balance_sources: bool = True          # up-weight rare sources
 
     def clamp(self) -> "Context":
         if self.text_field not in ("text", "htr"):
@@ -44,29 +44,35 @@ class Context:
         return self
 
 
+def _matches(doc: Document, ctx: Context) -> bool:
+    """Whether the document passes the context's year range and facet filters."""
+    if ctx.year_from and doc.year < ctx.year_from:
+        return False
+    if ctx.year_to and doc.year > ctx.year_to:
+        return False
+    return ((not ctx.sources or doc.source in ctx.sources)
+            and (not ctx.languages or doc.language in ctx.languages)
+            and (not ctx.regions or doc.region in ctx.regions)
+            and (not ctx.genres or doc.genre in ctx.genres))
+
+
 def _filter(index: Index, ctx: Context) -> list[int]:
-    keep = []
-    for i, d in enumerate(index.docs):
-        if ctx.year_from and d.year < ctx.year_from:
-            continue
-        if ctx.year_to and d.year > ctx.year_to:
-            continue
-        if ctx.sources and d.source not in ctx.sources:
-            continue
-        if ctx.languages and d.language not in ctx.languages:
-            continue
-        if ctx.regions and d.region not in ctx.regions:
-            continue
-        if ctx.genres and d.genre not in ctx.genres:
-            continue
-        keep.append(i)
-    return keep
+    return [position for position, doc in enumerate(index.docs) if _matches(doc, ctx)]
 
 
-def _result_row(d: Document, score: float, badges: list[str], why: str) -> dict:
-    row = d.as_meta()
+def _different_facets(doc: Document, anchor: Document) -> list[str]:
+    """The facets on which the document differs from the anchor."""
+    return [name for name, differs in (("source", doc.source != anchor.source),
+                                       ("period", doc.decade != anchor.decade),
+                                       ("region", doc.region != anchor.region),
+                                       ("language", doc.language != anchor.language))
+            if differs]
+
+
+def _result_row(doc: Document, score: float, badges: list[str], why: str) -> dict:
+    row = doc.as_meta()
     row.update(score=round(float(score), 4), badges=badges, why=why,
-               snippet=d.snippet())
+               snippet=doc.snippet())
     return row
 
 
@@ -84,48 +90,45 @@ def run(index: Index, ctx: Context) -> dict:
                 "pool_size": 0, "filtered_count": 0, "on_gpu": index.on_gpu,
                 "note": "No documents match the current context filters."}
 
-    kept_arr = np.array(kept)
-    dense = dense_all[kept_arr]
-    lex = index.lexical_scores(ctx.query)[kept_arr]
-    rel = ctx.alpha * recommend.minmax(dense) + (1 - ctx.alpha) * recommend.minmax(lex)
+    kept_array = np.array(kept)
+    dense = dense_all[kept_array]
+    lexical = index.lexical_scores(ctx.query)[kept_array]
+    relevance = (ctx.alpha * recommend.minmax(dense)
+                 + (1 - ctx.alpha) * recommend.minmax(lexical))
 
-    pool_docs_all = [docs[i] for i in kept]
+    kept_docs = [docs[position] for position in kept]
     if ctx.balance_sources:
-        rel = rel * recommend.balance_boost(docs, pool_docs_all, strength=0.6)
+        relevance = relevance * recommend.balance_boost(docs, kept_docs, strength=0.6)
 
-    pool_order = list(np.argsort(-rel))[: ctx.pool]        # indices into kept/rel
-    pool_global = [kept[i] for i in pool_order]
-    pool_docs = [docs[i] for i in pool_global]
-    pool_rel = rel[pool_order]
-    sim = index.pairwise(pool_global, text_field)
+    pool_order = list(np.argsort(-relevance))[: ctx.pool]        # positions in kept
+    pool_global = [kept[position] for position in pool_order]
+    pool_docs = [docs[position] for position in pool_global]
+    pool_relevance = relevance[pool_order]
+    similarity = index.pairwise(pool_global, text_field)
 
-    chosen_local = recommend.mmr(pool_rel, sim, lam=ctx.diversity, k=ctx.k)
-    chosen_decades = [pool_docs[i].decade for i in chosen_local]
+    chosen_local = recommend.mmr(pool_relevance, similarity, diversity=ctx.diversity, k=ctx.k)
+    chosen_decades = [pool_docs[position].decade for position in chosen_local]
+    why_suffix = " · diversified (MMR)" if ctx.diversity > 0 else ""
 
     results = []
     chosen_ids = set()
-    for rank, li in enumerate(chosen_local):
-        d = pool_docs[li]
-        chosen_ids.add(d.id)
-        bdg = recommend.badges(docs, d, chosen_decades)
-        why = f"hybrid rank {rank + 1}" + (
-            " · diversified (MMR)" if ctx.diversity > 0 else "")
-        results.append(_result_row(d, pool_rel[li], bdg, why))
+    for rank, local in enumerate(chosen_local):
+        doc = pool_docs[local]
+        chosen_ids.add(doc.id)
+        badges = recommend.badges(docs, doc, chosen_decades)
+        results.append(_result_row(doc, pool_relevance[local], badges,
+                                   f"hybrid rank {rank + 1}{why_suffix}"))
 
     serendipity = []
     if results:
         anchor = pool_docs[chosen_local[0]]
-        for li, sc in recommend.serendipity_picks(
-                pool_docs, pool_rel, anchor, chosen_ids,
-                n=5, strength=ctx.serendipity):
-            d = pool_docs[li]
-            why = "relevant but from a different " + "/".join(
-                f for f, cond in (("source", d.source != anchor.source),
-                                  ("period", d.decade != anchor.decade),
-                                  ("region", d.region != anchor.region),
-                                  ("language", d.language != anchor.language)) if cond
-            )
-            serendipity.append(_result_row(d, sc, recommend.badges(docs, d, chosen_decades), why))
+        picks = recommend.serendipity_picks(pool_docs, pool_relevance, anchor, chosen_ids,
+                                            n=5, strength=ctx.serendipity)
+        for local, score in picks:
+            doc = pool_docs[local]
+            why = "relevant but from a different " + "/".join(_different_facets(doc, anchor))
+            badges = recommend.badges(docs, doc, chosen_decades)
+            serendipity.append(_result_row(doc, score, badges, why))
 
     gap = gaps.analyze(docs, dense_all, kept)
 
@@ -140,5 +143,5 @@ def run(index: Index, ctx: Context) -> dict:
         "text_field": text_field,
         "text_fields": index.fields,
         "on_gpu": index.on_gpu,
-        "source_mix": dict(Counter(r["source"] for r in results)),
+        "source_mix": dict(Counter(row["source"] for row in results)),
     }
