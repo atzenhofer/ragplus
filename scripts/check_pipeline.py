@@ -43,7 +43,7 @@ def main() -> None:
     answer = rag.answer(index, ctx)
     artifacts = answer["artifacts"]
     print(f"used_llm={answer['used_llm']}  confidence={artifacts['confidence']}  "
-          f"independence: {artifacts['independence_note']}")
+          f"independence: {artifacts['duplicate_note']}")
     print("\nanswer:\n" + answer["answer"][:700])
 
 

@@ -87,9 +87,9 @@ def badges(docs: list[Document], doc: Document, main_decades: list[int]) -> list
     median_count = median(frequencies.values()) if frequencies else 0
     tags = []
     if frequencies.get(doc.source, 0) <= median_count:
-        tags.append("underrepresented-source")
+        tags.append("rare-source")
     if main_decades and doc.decade != Counter(main_decades).most_common(1)[0][0]:
-        tags.append("adjacent-period")
+        tags.append("other-period")
     if doc.derived_from is not None:
         tags.append("near-duplicate")
     main_language = dominant_language(docs)

@@ -156,7 +156,7 @@ def answer(index: Index, ctx: search.Context,
             for number, doc in enumerate(evidence, 1)
         ],
         "selection": _selection_record(chosen_by, proposed, evidence),
-        "independence_note": _duplicate_note(chosen_by, duplicates),
+        "duplicate_note": _duplicate_note(chosen_by, duplicates),
         "coverage": {
             "decades": [f"{decade}s" for decade in covered_decades],
             "regions": covered_regions,
@@ -166,7 +166,7 @@ def answer(index: Index, ctx: search.Context,
         "gaps": res["gaps"]["messages"],
         "confidence": _confidence(len(evidence)),
         "confidence_basis": CONFIDENCE_BASIS,
-        "confidence_rationale": (
+        "confidence_reason": (
             f"Grounded in {len(evidence)} independent passage(s) across "
             f"{len(covered_decades)} decade(s) and {len(covered_regions)} region(s)."),
     }

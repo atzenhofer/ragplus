@@ -320,7 +320,7 @@ async function runAsk(ids){
   $("answer").textContent = d.answer;
   const a = d.artifacts;
   $("confLine").innerHTML = "confidence <b>" + esc(a.confidence) + "</b> "
-    + '<span class="why">' + esc(a.confidence_rationale) + "</span>";
+    + '<span class="why">' + esc(a.confidence_reason) + "</span>";
   $("confBasis").textContent = a.confidence_basis || "";
   $("artifacts").textContent = JSON.stringify(a, null, 2);
   renderResults(d);
