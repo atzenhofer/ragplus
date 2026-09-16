@@ -1,5 +1,5 @@
-"""Indexing: dense embeddings (local or remote encoder) + lexical BM25, with a small
-on-disk cache so re-runs are instant."""
+"""Indexing: dense embeddings (local or remote encoder) + lexical BM25, with an on-disk
+cache that later starts load."""
 from __future__ import annotations
 
 import hashlib
@@ -54,8 +54,7 @@ class Index:
         if cache.exists():
             log.info("field %s: cached", field)
             return np.load(cache)
-        # Embed in chunks and keep each finished chunk on disk, so an interrupted run
-        # resumes where it stopped instead of starting the field over.
+        # Each chunk is saved as it finishes, so an interrupted run resumes at the next one.
         chunks = range(0, len(texts), CHUNK)
         parts = [CACHE_DIR / f"emb-{key}.part{i // CHUNK:04d}.npy" for i in chunks]
         todo = [(i, part) for i, part in zip(chunks, parts) if not part.exists()]

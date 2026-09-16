@@ -50,8 +50,8 @@ def analyze(docs: list[Document], dense: np.ndarray, kept_idx: list[int],
             excl[facet] = dict(c.most_common())
         top = ", ".join(f"{v} {k}" for k, v in _by_facet(ex_docs, "region").most_common(3))
         messages.append(
-            f"Your current filters excluded {len(excluded_relevant)} otherwise-relevant "
-            f"item(s) (by region: {top}). Widen the context to see them."
+            f"The filters excluded {len(excluded_relevant)} relevant documents "
+            f"(by region: {top}). Widen the context to see them."
         )
 
     neigh_docs = [docs[i] for i in neigh]
@@ -70,7 +70,7 @@ def analyze(docs: list[Document], dense: np.ndarray, kept_idx: list[int],
         }
         if thin and facet in ("language", "region") and not free_text:
             messages.append(
-                f"This theme has little/no coverage for {facet}(s): {_listing(thin)}."
+                f"Little or no material on this theme for these {facet}s: {_listing(thin)}."
             )
         elif free_text and facet in ("language", "region"):
             messages.append(

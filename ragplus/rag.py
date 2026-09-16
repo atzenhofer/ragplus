@@ -69,8 +69,8 @@ def _extractive(docs: list[Document]) -> str:
     for i, d in enumerate(docs, 1):
         lead = d.text.split(". ")[0].strip()
         parts.append(f"{lead}. [{i}]")
-    return ("**(extractive fallback: no LLM reached)** " + " ".join(parts)
-            + "\n\nUncertainty: assembled directly from passage leads, no synthesis.")
+    return ("**No LLM reached; this is the first sentence of each passage.** " + " ".join(parts)
+            + "\n\nUncertainty: not a synthesis, so nothing was checked across passages.")
 
 
 CONFIDENCE_BASIS = (
@@ -146,9 +146,9 @@ def answer(index: Index, ctx: search.Context,
         "independence_note": (
             "Passages marked by the scholar are used as given, without a duplicate check."
             if chosen_by == "scholar" else
-            f"{len(duplicates)} candidate(s) dropped as near-duplicates / wire copies "
-            "to avoid counting circular reporting as corroboration."
-            if duplicates else "No near-duplicates detected among candidates."),
+            f"{len(duplicates)} near-duplicates dropped, so one report copied several times "
+            "counts once."
+            if duplicates else "No near-duplicates among the candidates."),
         "coverage": {
             "decades": [f"{d}s" for d in covered_decades],
             "regions": covered_regions,

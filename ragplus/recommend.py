@@ -31,7 +31,7 @@ def dominant_language(docs: list[Document]) -> str:
 
 
 def balance_boost(docs: list[Document], pool_docs: list[Document], strength: float) -> np.ndarray:
-    """Anti-popularity / 'due weight': up-weight items from rarer sources.
+    """Up-weight items from rarer sources.
 
     Returns a multiplicative factor per pool item in [1, 1+strength]."""
     freq = source_frequencies(docs)
@@ -69,8 +69,8 @@ def facet_diff(a: Document, b: Document) -> float:
 
 def serendipity_picks(pool_docs: list[Document], rel: np.ndarray, anchor: Document,
                       chosen_ids: set[str], n: int, strength: float) -> list[tuple[int, float]]:
-    """Relevant-but-unexpected items: still on-topic, but from a different corner of the
-    corpus than the top result. Returns (pool_index, score) pairs, best first."""
+    """Relevant items from another source, region, decade or language than the top result.
+    Returns (pool_index, score) pairs, best first."""
     if strength <= 0:
         return []
     r = minmax(rel)

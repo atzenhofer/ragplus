@@ -55,8 +55,8 @@ data of your own.
 **Charters, not in the repository.** The corpus the prototype is built for: the charters of one
 archive from [Monasterium](https://www.monasterium.net), one record per charter with its regest
 and, where one exists, the machine transcription of the original. The data is not published
-here; it is shared directly on request. It is the same file format, so `./run.sh charters.jsonl`
-is all it takes.
+here; it is shared directly on request. It has the same format, so `./run.sh charters.jsonl`
+runs it.
 
 The format is one JSON object per line with these fields. The last two columns show what each
 holds in the two corpora.
