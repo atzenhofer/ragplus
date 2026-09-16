@@ -19,7 +19,7 @@ MAX_LISTED = 8
 
 
 def _by_facet(docs: list[Document], facet: str) -> Counter:
-    return Counter(getattr(d, facet) for d in docs)
+    return Counter(getattr(doc, facet) for doc in docs)
 
 
 def _listing(values: list[str]) -> str:
@@ -29,68 +29,65 @@ def _listing(values: list[str]) -> str:
     return f"{shown} (and {rest} more)" if rest > 0 else shown
 
 
-def analyze(docs: list[Document], dense: np.ndarray, kept_idx: list[int],
-            neigh_size: int = 50) -> dict:
+def analyze(docs: list[Document], dense: np.ndarray, kept_positions: list[int],
+            neighbourhood_size: int = 50) -> dict:
     """Report filter-exclusion and coverage gaps for the current query and context."""
-    kept = set(kept_idx)
-    all_idx = list(range(len(docs)))
-
+    kept = set(kept_positions)
     order = list(np.argsort(-dense))
-    neigh = order[:neigh_size]
-    relevant_cut = dense[order[min(neigh_size, len(order)) - 1]] if order else 0.0
-
+    neighbourhood = order[:neighbourhood_size]
+    relevance_cut = dense[order[min(neighbourhood_size, len(order)) - 1]] if order else 0.0
     messages: list[str] = []
 
-    excluded_relevant = [i for i in neigh if i not in kept]
-    excl = {"count": len(excluded_relevant)}
-    if excluded_relevant:
-        ex_docs = [docs[i] for i in excluded_relevant]
+    excluded_positions = [position for position in neighbourhood if position not in kept]
+    excluded = {"count": len(excluded_positions)}
+    if excluded_positions:
+        excluded_docs = [docs[position] for position in excluded_positions]
         for facet in ("language", "region", "source"):
-            c = _by_facet(ex_docs, facet)
-            excl[facet] = dict(c.most_common())
-        top = ", ".join(f"{v} {k}" for k, v in _by_facet(ex_docs, "region").most_common(3))
+            excluded[facet] = dict(_by_facet(excluded_docs, facet).most_common())
+        top_regions = ", ".join(f"{count} {region}" for region, count
+                                in _by_facet(excluded_docs, "region").most_common(3))
         messages.append(
-            f"The filters excluded {len(excluded_relevant)} relevant documents "
-            f"(by region: {top}). Widen the context to see them."
+            f"The filters excluded {len(excluded_positions)} relevant documents "
+            f"(by region: {top_regions}). Widen the context to see them."
         )
 
-    neigh_docs = [docs[i] for i in neigh]
+    neighbourhood_docs = [docs[position] for position in neighbourhood]
     coverage = {}
     for facet in ("decade", "language", "region"):
-        corpus_vals = set(getattr(d, facet) for d in docs)
-        neigh_c = _by_facet(neigh_docs, facet)
-        thin = sorted(str(v) for v in corpus_vals if neigh_c.get(v, 0) == 0)
-        free_text = len(corpus_vals) > MAX_FACET_VALUES
+        corpus_values = set(getattr(doc, facet) for doc in docs)
+        counts = _by_facet(neighbourhood_docs, facet)
+        absent = sorted(str(value) for value in corpus_values if counts.get(value, 0) == 0)
+        free_text = len(corpus_values) > MAX_FACET_VALUES
         coverage[facet] = {
-            "neighbourhood": dict(neigh_c),
-            "absent": thin[:MAX_LISTED],
-            "absent_count": len(thin),
-            "distinct_values": len(corpus_vals),
+            "neighbourhood": dict(counts),
+            "absent": absent[:MAX_LISTED],
+            "absent_count": len(absent),
+            "distinct_values": len(corpus_values),
             "free_text": free_text,
         }
-        if thin and facet in ("language", "region") and not free_text:
+        if facet == "decade":
+            continue
+        if free_text:
             messages.append(
-                f"Little or no material on this theme for these {facet}s: {_listing(thin)}."
+                f"Coverage for {facet} not reported: {len(corpus_values)} distinct values in "
+                f"this corpus, so it behaves as free text rather than a facet."
             )
-        elif free_text and facet in ("language", "region"):
+        elif absent:
             messages.append(
-                f"Coverage for {facet} not reported: {len(corpus_vals)} distinct values in this "
-                f"corpus, so it behaves as free text rather than a facet."
+                f"Little or no material on this theme for these {facet}s: {_listing(absent)}."
             )
 
-    if neigh_docs:
-        decs = _by_facet(neigh_docs, "decade")
-        span = range(min(decs), max(decs) + 10, 10)
-        empty_decs = [d for d in span if decs.get(d, 0) == 0]
-        if empty_decs:
-            messages.append(
-                "Temporal gap: no relevant material in "
-                + ", ".join(f"{d}s" for d in empty_decs) + "."
-            )
+    if neighbourhood_docs:
+        decades = _by_facet(neighbourhood_docs, "decade")
+        span = range(min(decades), max(decades) + 10, 10)
+        empty_decades = [decade for decade in span if decades.get(decade, 0) == 0]
+        if empty_decades:
+            messages.append("Temporal gap: no relevant material in "
+                            + ", ".join(f"{decade}s" for decade in empty_decades) + ".")
 
     return {
         "messages": messages,
-        "excluded": excl,
+        "excluded": excluded,
         "coverage": coverage,
-        "relevance_cut": float(relevant_cut),
+        "relevance_cut": float(relevance_cut),
     }

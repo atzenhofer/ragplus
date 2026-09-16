@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections import Counter
 
+import numpy as np
+
 from . import llm, search
 from .corpus import Document
 from .index import Index
@@ -23,29 +25,29 @@ SYSTEM = (
 def _select_evidence(index: Index, results: list[dict], max_passages: int = 6,
                      dup_threshold: float = 0.93,
                      text_field: str = "text") -> tuple[list[Document], list[str]]:
-    """Pick independent witnesses: drop declared wire-copies (synthetic `derived_from`)
-    and embedding near-duplicates (real syndication), keeping one representative each.
-    Returns the witnesses and the ids skipped as duplicates."""
-    pos = {d.id: i for i, d in enumerate(index.docs)}
-    by_id = {d.id: d for d in index.docs}
+    """Walk the results in rank order and keep one document per origin: a document that
+    copies one already kept (`derived_from`), or whose embedding is within the duplicate
+    threshold of one, is skipped. Returns the kept documents and the skipped ids."""
+    position_of = {doc.id: position for position, doc in enumerate(index.docs)}
+    by_id = {doc.id: doc for doc in index.docs}
     picked: list[Document] = []
+    picked_vectors: list[np.ndarray] = []
     duplicates: list[str] = []
-    picked_vecs: list = []
     seen_origins: set[str] = set()
-    for r in results:
-        d = by_id[r["id"]]
-        origin = d.derived_from or d.id
+    for row in results:
+        doc = by_id[row["id"]]
+        origin = doc.derived_from or doc.id
         if origin in seen_origins:
-            duplicates.append(d.id)
+            duplicates.append(doc.id)
             continue
-        vec = index.matrix(text_field)[pos[d.id]]
-        if picked_vecs and max(float(vec @ pv) for pv in picked_vecs) >= dup_threshold:
-            seen_origins.add(origin)
-            duplicates.append(d.id)
-            continue
+        vector = index.matrix(text_field)[position_of[doc.id]]
+        closest = max((float(vector @ kept) for kept in picked_vectors), default=0.0)
         seen_origins.add(origin)
-        picked.append(d)
-        picked_vecs.append(vec)
+        if closest >= dup_threshold:
+            duplicates.append(doc.id)
+            continue
+        picked.append(doc)
+        picked_vectors.append(vector)
         if len(picked) >= max_passages:
             break
     return picked, duplicates
@@ -57,19 +59,18 @@ def _passage_text(doc: Document, text_field: str) -> str:
 
 
 def _passages_block(docs: list[Document], text_field: str = "text") -> str:
-    lines = []
-    for i, d in enumerate(docs, 1):
-        lines.append(f"[{i}] ({d.date}, {d.source}, {d.region}, {d.language}, {d.genre}) "
-                     f"{_passage_text(d, text_field)}")
-    return "\n\n".join(lines)
+    """The numbered passages as the prompt shows them."""
+    return "\n\n".join(
+        f"[{number}] ({doc.date}, {doc.source}, {doc.region}, {doc.language}, {doc.genre}) "
+        f"{_passage_text(doc, text_field)}"
+        for number, doc in enumerate(docs, 1))
 
 
 def _extractive(docs: list[Document]) -> str:
-    parts = []
-    for i, d in enumerate(docs, 1):
-        lead = d.text.split(". ")[0].strip()
-        parts.append(f"{lead}. [{i}]")
-    return ("**No LLM reached; this is the first sentence of each passage.** " + " ".join(parts)
+    """The answer when no LLM is reached: the first sentence of each passage, numbered."""
+    leads = " ".join(f"{doc.text.split('. ')[0].strip()}. [{number}]"
+                     for number, doc in enumerate(docs, 1))
+    return ("**No LLM reached; this is the first sentence of each passage.** " + leads
             + "\n\nUncertainty: not a synthesis, so nothing was checked across passages.")
 
 
@@ -82,9 +83,23 @@ CONFIDENCE_BASIS = (
 )
 
 
-def _confidence(n: int) -> str:
+def _confidence(passage_count: int) -> str:
     """The evidence-count band: low, moderate or reasonable."""
-    return "low" if n <= 2 else ("moderate" if n <= 4 else "reasonable")
+    if passage_count <= 2:
+        return "low"
+    if passage_count <= 4:
+        return "moderate"
+    return "reasonable"
+
+
+def _duplicate_note(chosen_by: str, duplicates: list[str]) -> str:
+    """What the duplicate check did, for the reader of the answer."""
+    if chosen_by == "scholar":
+        return "Passages marked by the scholar are used as given, without a duplicate check."
+    if duplicates:
+        return (f"{len(duplicates)} near-duplicates dropped, so one report copied several "
+                "times counts once.")
+    return "No near-duplicates among the candidates."
 
 
 def _selection_record(chosen_by: str, proposed: list[Document],
@@ -96,8 +111,8 @@ def _selection_record(chosen_by: str, proposed: list[Document],
         "by": chosen_by,
         "proposed": proposed_ids,
         "used": kept_ids,
-        "declined": [i for i in proposed_ids if i not in kept_ids],
-        "added": [i for i in kept_ids if i not in proposed_ids],
+        "declined": [doc_id for doc_id in proposed_ids if doc_id not in kept_ids],
+        "added": [doc_id for doc_id in kept_ids if doc_id not in proposed_ids],
     }
 
 
@@ -107,14 +122,14 @@ def answer(index: Index, ctx: search.Context,
     proposed, duplicates = _select_evidence(index, res["results"], text_field=ctx.text_field)
 
     if selected_ids:
-        by_id = {d.id: d for d in index.docs}
-        evidence = [by_id[i] for i in selected_ids if i in by_id]
+        by_id = {doc.id: doc for doc in index.docs}
+        evidence = [by_id[doc_id] for doc_id in selected_ids if doc_id in by_id]
         chosen_by = "scholar"
     else:
         evidence = proposed
         chosen_by = "system"
 
-    citations = [{"n": i + 1, **d.as_meta()} for i, d in enumerate(evidence)]
+    citations = [{"n": number, **doc.as_meta()} for number, doc in enumerate(evidence, 1)]
 
     if not evidence:
         text, used_llm = "No documents match the current context, so no answer can be grounded.", False
@@ -130,36 +145,29 @@ def answer(index: Index, ctx: search.Context,
             text = _extractive(evidence)
             used_llm = False
 
-    covered_decades = sorted({d.decade for d in evidence})
-    covered_regions = sorted({d.region for d in evidence})
-    n = len(evidence)
-    conf = _confidence(n)
+    covered_decades = sorted({doc.decade for doc in evidence})
+    covered_regions = sorted({doc.region for doc in evidence})
+    reason = "marked by the scholar" if chosen_by == "scholar" else "top-ranked independent witness"
     artifacts = {
         "selected_sources": [
-            {"n": i + 1, "id": d.id, "title": d.title, "date": d.date,
-             "source": d.source, "region": d.region, "language": d.language,
-             "reason": "marked by the scholar" if chosen_by == "scholar"
-                       else "top-ranked independent witness"}
-            for i, d in enumerate(evidence)
+            {"n": number, "id": doc.id, "title": doc.title, "date": doc.date,
+             "source": doc.source, "region": doc.region, "language": doc.language,
+             "reason": reason}
+            for number, doc in enumerate(evidence, 1)
         ],
         "selection": _selection_record(chosen_by, proposed, evidence),
-        "independence_note": (
-            "Passages marked by the scholar are used as given, without a duplicate check."
-            if chosen_by == "scholar" else
-            f"{len(duplicates)} near-duplicates dropped, so one report copied several times "
-            "counts once."
-            if duplicates else "No near-duplicates among the candidates."),
+        "independence_note": _duplicate_note(chosen_by, duplicates),
         "coverage": {
-            "decades": [f"{d}s" for d in covered_decades],
+            "decades": [f"{decade}s" for decade in covered_decades],
             "regions": covered_regions,
-            "languages": sorted({d.language for d in evidence}),
-            "source_mix": dict(Counter(d.source for d in evidence)),
+            "languages": sorted({doc.language for doc in evidence}),
+            "source_mix": dict(Counter(doc.source for doc in evidence)),
         },
         "gaps": res["gaps"]["messages"],
-        "confidence": conf,
+        "confidence": _confidence(len(evidence)),
         "confidence_basis": CONFIDENCE_BASIS,
         "confidence_rationale": (
-            f"Grounded in {n} independent passage(s) across "
+            f"Grounded in {len(evidence)} independent passage(s) across "
             f"{len(covered_decades)} decade(s) and {len(covered_regions)} region(s)."),
     }
 
