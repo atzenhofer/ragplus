@@ -27,9 +27,10 @@ class Document:
     def decade(self) -> int:
         return (self.year // 10) * 10
 
-    def snippet(self, n: int = 240) -> str:
-        t = self.text.strip().replace("\n", " ")
-        return t if len(t) <= n else t[: n - 3].rstrip() + "..."
+    def snippet(self, length: int = 240) -> str:
+        """The text on one line, cut to `length` with an ellipsis."""
+        text = self.text.strip().replace("\n", " ")
+        return text if len(text) <= length else text[: length - 3].rstrip() + "..."
 
     def as_meta(self) -> dict:
         return {
@@ -41,19 +42,18 @@ class Document:
 
 
 def load_corpus(path: str | Path) -> list[Document]:
-    path = Path(path)
+    """Read a JSONL corpus, one document per line; fields the model does not name are ignored."""
     docs: list[Document] = []
-    with path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
+    with Path(path).open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
                 continue
-            d = json.loads(line)
+            record = json.loads(line)
             docs.append(Document(
-                id=d["id"], title=d["title"], text=d["text"], date=d["date"],
-                year=int(d["year"]), source=d["source"], region=d["region"],
-                language=d["language"], genre=d["genre"],
-                topics=list(d.get("topics", [])), derived_from=d.get("derived_from"),
-                url=d.get("url", ""), htr=d.get("htr", ""),
+                id=record["id"], title=record["title"], text=record["text"],
+                date=record["date"], year=int(record["year"]), source=record["source"],
+                region=record["region"], language=record["language"], genre=record["genre"],
+                topics=list(record.get("topics", [])), derived_from=record.get("derived_from"),
+                url=record.get("url", ""), htr=record.get("htr", ""),
             ))
     return docs

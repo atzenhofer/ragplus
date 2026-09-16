@@ -105,8 +105,8 @@ def _duplicate_note(chosen_by: str, duplicates: list[str]) -> str:
 def _selection_record(chosen_by: str, proposed: list[Document],
                       evidence: list[Document]) -> dict:
     """What the system proposed, what was used, and how the two differ."""
-    proposed_ids = [d.id for d in proposed]
-    kept_ids = [d.id for d in evidence]
+    proposed_ids = [doc.id for doc in proposed]
+    kept_ids = [doc.id for doc in evidence]
     return {
         "by": chosen_by,
         "proposed": proposed_ids,

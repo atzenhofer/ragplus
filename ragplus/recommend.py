@@ -66,7 +66,7 @@ def facet_diff(doc: Document, other: Document) -> float:
 
 
 def serendipity_picks(pool_docs: list[Document], relevance: np.ndarray, anchor: Document,
-                      chosen_ids: set[str], n: int, strength: float) -> list[tuple[int, float]]:
+                      chosen_ids: set[str], count: int, strength: float) -> list[tuple[int, float]]:
     """Relevant items from another source, region, decade or language than the top result.
     Returns (pool_index, score) pairs, best first."""
     if strength <= 0:
@@ -78,7 +78,7 @@ def serendipity_picks(pool_docs: list[Document], relevance: np.ndarray, anchor: 
             continue
         scored.append((position, float(scaled[position]) * facet_diff(doc, anchor)))
     scored.sort(key=lambda pair: pair[1], reverse=True)
-    return scored[:n]
+    return scored[:count]
 
 
 def badges(docs: list[Document], doc: Document, main_decades: list[int]) -> list[str]:

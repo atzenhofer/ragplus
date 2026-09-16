@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import llm, rag
+from . import llm, rag, search
 from .config import settings
 from .corpus import load_corpus
 from .index import Index
@@ -60,42 +60,45 @@ class QueryReq(BaseModel):
         return Context(**self.model_dump(exclude={"selected_ids"}))
 
 
+def _facet_counts(docs, name: str) -> list[dict]:
+    """Values of one facet with their document counts, most common first."""
+    counts = Counter(getattr(doc, name) for doc in docs)
+    return [{"value": value, "count": count}
+            for value, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))]
+
+
 @app.get("/api/meta")
 def meta() -> dict:
-    idx: Index = STATE["index"]
-    docs = idx.docs
-    def facet(name):
-        return sorted(Counter(getattr(d, name) for d in docs).items(),
-                      key=lambda t: (-t[1], t[0]))
+    index: Index = STATE["index"]
+    docs = index.docs
     return {
         "corpus_size": len(docs),
-        "year_min": min(d.year for d in docs),
-        "year_max": max(d.year for d in docs),
-        "sources": [{"value": v, "count": c} for v, c in facet("source")],
-        "languages": [{"value": v, "count": c} for v, c in facet("language")],
-        "regions": [{"value": v, "count": c} for v, c in facet("region")],
-        "genres": [{"value": v, "count": c} for v, c in facet("genre")],
-        "topics": sorted({t for d in docs for t in d.topics}),
-        "text_fields": idx.fields,
+        "year_min": min(doc.year for doc in docs),
+        "year_max": max(doc.year for doc in docs),
+        "sources": _facet_counts(docs, "source"),
+        "languages": _facet_counts(docs, "language"),
+        "regions": _facet_counts(docs, "region"),
+        "genres": _facet_counts(docs, "genre"),
+        "topics": sorted({topic for doc in docs for topic in doc.topics}),
+        "text_fields": index.fields,
         "embed_model": settings.embed_model,
         "embed_backend": settings.embed_backend,
-        "embed_on_gpu": idx.on_gpu,
-        "embed_device": idx.device,
-        "embed_gpu": idx.gpu_name,
+        "embed_on_gpu": index.on_gpu,
+        "embed_device": index.device,
+        "embed_gpu": index.gpu_name,
         "llm_model": settings.llm_model if llm.available() else None,
         "llm_available": llm.available(),
     }
 
 
 @app.post("/api/search")
-def search_endpoint(req: QueryReq) -> dict:
-    from . import search as search_mod
-    return search_mod.run(STATE["index"], req.to_context())
+def search_endpoint(request: QueryReq) -> dict:
+    return search.run(STATE["index"], request.to_context())
 
 
 @app.post("/api/rag")
-def rag_endpoint(req: QueryReq) -> dict:
-    return rag.answer(STATE["index"], req.to_context(), req.selected_ids)
+def rag_endpoint(request: QueryReq) -> dict:
+    return rag.answer(STATE["index"], request.to_context(), request.selected_ids)
 
 
 @app.get("/")

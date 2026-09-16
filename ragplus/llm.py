@@ -16,6 +16,7 @@ class LLMUnavailable(RuntimeError):
 
 
 def available() -> bool:
+    """Whether an endpoint and a key are configured."""
     return bool(settings.llm_api_key) and bool(settings.llm_base_url)
 
 
@@ -37,13 +38,12 @@ def chat(messages: list[dict], *, max_tokens: int = 1200, temperature: float = 0
     headers = {"Authorization": f"Bearer {settings.llm_api_key}",
                "Content-Type": "application/json"}
     try:
-        r = httpx.post(url, json=body, headers=headers, timeout=settings.llm_timeout)
-        r.raise_for_status()
-        msg = r.json()["choices"][0]["message"]
-    except Exception as e:
-        raise LLMUnavailable(str(e)) from e
+        response = httpx.post(url, json=body, headers=headers, timeout=settings.llm_timeout)
+        response.raise_for_status()
+        message = response.json()["choices"][0]["message"]
+    except (httpx.HTTPError, KeyError, IndexError, ValueError) as error:
+        raise LLMUnavailable(str(error)) from error
 
-    content = msg.get("content")
-    if not content:  # e.g. thinking mode leaked the text into `reasoning`
-        content = msg.get("reasoning") or ""
+    # A reasoning model that was not told to stop thinking puts the text in `reasoning`.
+    content = message.get("content") or message.get("reasoning") or ""
     return content.strip()

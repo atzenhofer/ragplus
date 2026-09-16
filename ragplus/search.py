@@ -123,7 +123,7 @@ def run(index: Index, ctx: Context) -> dict:
     if results:
         anchor = pool_docs[chosen_local[0]]
         picks = recommend.serendipity_picks(pool_docs, pool_relevance, anchor, chosen_ids,
-                                            n=5, strength=ctx.serendipity)
+                                            count=5, strength=ctx.serendipity)
         for local, score in picks:
             doc = pool_docs[local]
             why = "relevant but from a different " + "/".join(_different_facets(doc, anchor))

@@ -15,10 +15,10 @@ CACHE_DIR = ROOT / ".cache"
 
 
 def _bool(name: str, default: bool) -> bool:
-    v = os.environ.get(name)
-    if v is None:
+    value = os.environ.get(name)
+    if value is None:
         return default
-    return v.strip().lower() in {"1", "true", "yes", "on"}
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 @dataclass(frozen=True)
