@@ -1,6 +1,6 @@
 # ragplus
 
-A WIP research prototype for retrieval, recommendation and retrieval-augmented generation (RAG)
+A research prototype for retrieval, recommendation and retrieval-augmented generation (RAG)
 over a corpus of historical sources. The user sets the query context (period, facets, ranking
 settings), sees which relevant documents the filters excluded, and can choose the passages an
 answer is built from.
@@ -40,36 +40,42 @@ The first start embeds the corpus and stores the matrix in `.cache/`; later star
 For embeddings on your own machine: `uv sync --extra local-embed`, then `EMBED_BACKEND=local`
 and a Hugging Face model id in `EMBED_MODEL`.
 
-## Example data
+## Corpora
 
-`data/corpus.jsonl` holds 408 synthetic news items from 1820 to 1928, written by
-`data/generate_corpus.py` (seed 42). The newspapers, people and articles are invented; the
-cities are real. Every text is English, and the language field is only a label. The corpus has
-uneven facets and clusters of wire copies, so the gap analysis and the duplicate removal have
-something to report.
+The app runs on whichever corpus file it is given: `./run.sh` uses `data/corpus.jsonl`,
+`./run.sh path/to/file.jsonl` uses that file. Two corpora exist.
 
-## Your own data
+**Synthetic news, in the repository.** `data/corpus.jsonl` holds 408 invented news items from
+1820 to 1928, written by `data/generate_corpus.py` (seed 42). The newspapers, people and
+articles are invented; the cities are real. Every text is English, and the language field is
+only a label. The corpus has uneven facets and clusters of wire copies, so the gap analysis and
+the duplicate removal have something to report. It exists so the app can be tried without any
+data of your own.
 
-Write the corpus as a `.jsonl` file with one JSON object per document, one per line, and pass
-it to `run.sh`, for example `./run.sh ../letters.jsonl`. The repository contains no converter, so
-each project writes its own. The last two columns show how news items and letters fill each
-field.
+**Charters, not in the repository.** The corpus the prototype is built for: the charters of one
+archive from [Monasterium](https://www.monasterium.net), one record per charter with its regest
+and, where one exists, the machine transcription of the original. The data is not published
+here; it is shared directly on request. It is the same file format, so `./run.sh charters.jsonl`
+is all it takes.
 
-| Field | Used for | News items | Letters |
+The format is one JSON object per line with these fields. The last two columns show what each
+holds in the two corpora.
+
+| Field | Used for | Synthetic news | Charters |
 |---|---|---|---|
-| `id` | citations, marking results | article id | letter id |
-| `title` | display, BM25, embeddings, LLM passages | headline and newspaper | sender and recipient |
-| `text` | BM25, embeddings, LLM passages | article text | summary or full text |
-| `date` | display, LLM passages | date of publication (YYYY-MM-DD) | date of writing |
-| `year` | year filter, decades | year of publication | year of writing |
-| `source` | filter, source balance, badges, serendipity | newspaper | collection |
-| `region` | filter, gap analysis, serendipity | place of publication | place of writing |
-| `language` | filter, gap analysis, badges, serendipity | language of the article | language of the letter |
-| `genre` | filter | report or editorial | letter or draft |
-| `topics` (optional) | returned with each result | index terms | keywords |
-| `derived_from` (optional) | duplicate removal | id of the item it copies | id of the letter it copies |
-| `url` (optional) | link in the result list | archive page | edition page |
-| `htr` (optional) | second searchable text, UI toggle | OCR text | transcription |
+| `id` | citations, marking results | item id | charter md5 |
+| `title` | display, BM25, embeddings, LLM passages | headline and newspaper | signature and place of issue |
+| `text` | BM25, embeddings, LLM passages | article text | regest |
+| `date` | display, LLM passages | date of publication, YYYY-MM-DD | date of issue; a range keeps its first day |
+| `year` | year filter, decades | year of publication | year of issue |
+| `source` | filter, source balance, badges, serendipity | newspaper | archive |
+| `region` | filter, gap analysis, serendipity | city | place of issue, or `unknown` |
+| `language` | filter, gap analysis, badges, serendipity | label | `unknown` where the record has none |
+| `genre` | filter | news, editorial, review, notice | `charter:original`, `charter:copy`, `charter:draft`, `charter:mixed`, `charter:unknown` |
+| `topics` (optional) | returned with each result | keywords | place names |
+| `derived_from` (optional) | duplicate removal | id of the report it copies | unused |
+| `url` (optional) | link in the result list | none | the charter on Monasterium |
+| `htr` (optional) | second searchable text, UI toggle | none | machine transcription |
 
 Limits:
 
@@ -80,8 +86,8 @@ Limits:
   goes into one of the four fields.
 - The gap analysis treats a field with more than 25 distinct values as free text and reports no
   coverage for it. Places often exceed this.
-- Documents are not split into passages, and embeddings see the first 2,000 characters.
-  Passage-sized documents work best.
+- Documents are not split into passages. Embeddings see the first `EMBED_MAX_CHARS` characters
+  of each text, 16,000 by default.
 - Other fields in a record are ignored.
 
 ## How a search runs
@@ -132,8 +138,8 @@ answer is correct, is measured nowhere in the pipeline.
 - Coverage gaps compare 50 documents with every value in the corpus, so most queries report
   some.
 - BM25 always reads title and text. The transcription toggle changes the dense side only.
-- The API encoder cuts every text at 2,000 characters (`embed.MAX_CHARS`).
-- The cache key covers the whole corpus. Changing one document re-embeds all of them.
+- The cache key covers the whole corpus. Changing one document re-embeds all of them; an
+  interrupted run resumes from its last 512-document checkpoint.
 - The UI sends no pool size, so the pool is always 60.
 - In the example corpus, language filters and language badges follow the labels, while all
   texts are English.
