@@ -52,9 +52,9 @@ only a label. The corpus has uneven facets and clusters of wire copies, so the g
 the duplicate removal have something to report. It exists so the app can be tried without any
 data of your own.
 
-**Charters, not in the repository.** The corpus the prototype is built for: the charters of one
-archive from [Monasterium](https://www.monasterium.net), one record per charter with its regest
-and, where one exists, the machine transcription of the original. The data is not published
+**Charters, not in the repository.** The corpus the prototype is built for. It holds the charters
+of one archive from [Monasterium](https://www.monasterium.net), one record per charter, with the
+regest and, where one exists, the machine transcription of the original. The data is not published
 here; it is shared directly on request. It has the same format, so `./run.sh charters.jsonl`
 runs it.
 
