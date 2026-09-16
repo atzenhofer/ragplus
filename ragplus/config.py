@@ -37,7 +37,11 @@ class Settings:
     embed_api_key: str = (os.environ.get("EMBED_API_KEY") or os.environ.get("DHINFRA_API_KEY")
                           or os.environ.get("LLM_API_KEY") or "")
     embed_batch: int = int(os.environ.get("EMBED_BATCH", "128"))
-    embed_timeout: float = float(os.environ.get("EMBED_TIMEOUT", "180"))
+    embed_batch_chars: int = int(os.environ.get("EMBED_BATCH_CHARS", "64000"))
+    embed_timeout: float = float(os.environ.get("EMBED_TIMEOUT", "300"))
+    embed_concurrency: int = int(os.environ.get("EMBED_CONCURRENCY", "8"))
+    embed_max_chars: int = int(os.environ.get("EMBED_MAX_CHARS", "16000"))
+    embed_retries: int = int(os.environ.get("EMBED_RETRIES", "6"))
 
     corpus_path: Path = Path(os.environ.get("CORPUS_PATH", str(DATA_DIR / "corpus.jsonl")))
 
