@@ -52,24 +52,24 @@ something to report.
 
 Write the corpus as a `.jsonl` file with one JSON object per document, one per line, and pass
 it to `run.sh`, for example `./run.sh ../letters.jsonl`. The repository contains no converter, so
-each project writes its own. The last two columns show how medieval charters and letters fill
-each field.
+each project writes its own. The last two columns show how news items and letters fill each
+field.
 
-| Field | Used for | Charters | Letters |
+| Field | Used for | News items | Letters |
 |---|---|---|---|
-| `id` | citations, marking results | charter id | letter id |
-| `title` | display, BM25, embeddings, LLM passages | signature, issuer, place | sender and recipient |
-| `text` | BM25, embeddings, LLM passages | regest | summary or full text |
-| `date` | display, LLM passages | date of issue (YYYY-MM-DD) | date of writing |
-| `year` | year filter, decades | year of the earliest date | year of writing |
-| `source` | filter, source balance, badges, serendipity | archive | collection |
-| `region` | filter, gap analysis, serendipity | place of issue | place of writing |
-| `language` | filter, gap analysis, badges, serendipity | language of the charter | language of the letter |
-| `genre` | filter | original or copy | letter or draft |
+| `id` | citations, marking results | article id | letter id |
+| `title` | display, BM25, embeddings, LLM passages | headline and newspaper | sender and recipient |
+| `text` | BM25, embeddings, LLM passages | article text | summary or full text |
+| `date` | display, LLM passages | date of publication (YYYY-MM-DD) | date of writing |
+| `year` | year filter, decades | year of publication | year of writing |
+| `source` | filter, source balance, badges, serendipity | newspaper | collection |
+| `region` | filter, gap analysis, serendipity | place of publication | place of writing |
+| `language` | filter, gap analysis, badges, serendipity | language of the article | language of the letter |
+| `genre` | filter | report or editorial | letter or draft |
 | `topics` (optional) | returned with each result | index terms | keywords |
-| `derived_from` (optional) | duplicate removal | id of the charter it copies | id of the letter it copies |
+| `derived_from` (optional) | duplicate removal | id of the item it copies | id of the letter it copies |
 | `url` (optional) | link in the result list | archive page | edition page |
-| `htr` (optional) | second searchable text, UI toggle | HTR transcription | transcription |
+| `htr` (optional) | second searchable text, UI toggle | OCR text | transcription |
 
 Limits:
 
