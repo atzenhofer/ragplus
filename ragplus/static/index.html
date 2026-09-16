@@ -104,7 +104,7 @@
 <div class="wrap">
   <aside>
     <label for="q">Question</label>
-    <textarea id="q">imagery of urban poverty in the mid-19th century</textarea>
+    <textarea id="q" placeholder="Your research question"></textarea>
 
     <div class="seg" id="modes">
       <button data-mode="precision">precision</button>
@@ -314,7 +314,7 @@ async function runAsk(ids){
   $("answerSect").style.display = "";
   const sel = d.artifacts.selection;
   $("answerMeta").textContent =
-    (d.used_llm ? META.llm_model : "extractive") + " · " + d.citations.length
+    (d.used_llm ? META.llm_model : "no LLM") + " · " + d.citations.length
     + " passages · evidence chosen by " + sel.by
     + " · confidence " + d.artifacts.confidence;
   $("answer").textContent = d.answer;

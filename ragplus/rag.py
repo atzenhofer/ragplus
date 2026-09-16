@@ -11,14 +11,13 @@ from .corpus import Document
 from .index import Index
 
 SYSTEM = (
-    "You are a source-critical research assistant for the humanities. Answer ONLY from the "
-    "numbered passages provided. Cite every claim with bracketed passage numbers like [2]. "
-    "Give temporal and spatial context (dates, places) for what you report. Prefer independent "
-    "witnesses over repeated wire copies. Write the answer in the language the passages are "
-    "predominantly written in, and keep names, places and quoted wording in their original "
-    "spelling. Do NOT use outside knowledge. End with a short "
-    "'Uncertainty' line stating how well-supported the answer is and what is missing. If the "
-    "passages do not answer the question, say so plainly."
+    "You are a research assistant for the humanities and you read sources critically. "
+    "Answer only from the numbered passages. Cite every claim with the passage number in "
+    "brackets, like [2]. Give the dates and places of what you report. Where several passages "
+    "copy the same report, count it once. Write in the language most of the passages are in, "
+    "and keep names, places and quoted wording in their original spelling. Use no outside "
+    "knowledge. End with one line headed 'Uncertainty' that says how well the passages support "
+    "the answer and what is missing. If the passages do not answer the question, say so."
 )
 
 
@@ -136,7 +135,7 @@ def answer(index: Index, ctx: search.Context,
     else:
         user = (f"Research question ({ctx.mode} mode): {ctx.query}\n\n"
                 f"Passages:\n{_passages_block(evidence, ctx.text_field)}\n\n"
-                "Write a concise, cited answer.")
+                "Write a short answer with citations.")
         try:
             text = llm.chat([{"role": "system", "content": SYSTEM},
                              {"role": "user", "content": user}], max_tokens=900)
