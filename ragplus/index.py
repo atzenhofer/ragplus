@@ -15,6 +15,7 @@ from .corpus import Document
 from .embed import build_encoder
 
 _TOKEN = re.compile(r"[A-Za-zÀ-ÿ0-9]+")
+CHUNK = 512  # documents per checkpoint
 log = logging.getLogger("uvicorn.error")
 
 
@@ -53,10 +54,20 @@ class Index:
         if cache.exists():
             log.info("field %s: cached", field)
             return np.load(cache)
-        log.info("field %s: embedding %s documents, this can take minutes", field, len(texts))
+        # Embed in chunks and keep each finished chunk on disk, so an interrupted run
+        # resumes where it stopped instead of starting the field over.
+        chunks = range(0, len(texts), CHUNK)
+        parts = [CACHE_DIR / f"emb-{key}.part{i // CHUNK:04d}.npy" for i in chunks]
+        todo = [(i, part) for i, part in zip(chunks, parts) if not part.exists()]
+        log.info("field %s: embedding %s documents in %s chunks, %s already done",
+                 field, len(texts), len(parts), len(parts) - len(todo))
         started = time.monotonic()
-        emb = self._embed_texts(texts)
+        for i, part in todo:
+            np.save(part, self._embed_texts(texts[i:i + CHUNK]))
+        emb = np.concatenate([np.load(part) for part in parts]) if parts else np.zeros((0, 0))
         np.save(cache, emb)
+        for part in parts:
+            part.unlink()
         log.info("field %s: embedded in %.0fs", field, time.monotonic() - started)
         return emb
 

@@ -4,6 +4,7 @@ Run from the repo root:  .venv/bin/python scripts/check_pipeline.py
 """
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from ragplus.search import Context
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     docs = load_corpus(settings.corpus_path)
     idx = Index(docs)
     print(f"corpus={len(docs)}  embed={settings.embed_model}  "
