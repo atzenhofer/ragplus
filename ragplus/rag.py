@@ -190,6 +190,8 @@ def answer(index: Index, ctx: search.Context,
         "citations": citations,
         "artifacts": artifacts,
         "results": res["results"],
+        "filtered_count": res["filtered_count"],
+        "pool_size": res["pool_size"],
         "serendipity": res["serendipity"],
         "gaps": res["gaps"],
     }
