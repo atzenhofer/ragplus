@@ -42,7 +42,9 @@ class Index:
         return self.encoder.encode(texts)
 
     def _field_text(self, doc: Document, field: str) -> str:
-        return doc.tenor if field == "tenor" else f"{doc.title}. {doc.text}"
+        if field == "tenor" and doc.tenor:
+            return doc.tenor
+        return f"{doc.title}. {doc.text}"
 
     def _build_embeddings(self, docs: list[Document], field: str) -> np.ndarray:
         texts = [self._field_text(doc, field) for doc in docs]
