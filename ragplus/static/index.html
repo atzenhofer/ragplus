@@ -23,17 +23,18 @@
   a:hover{border-color:var(--fg)}
   .num{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
 
-  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
-         padding:20px 28px 14px;border-bottom:1px solid var(--line)}
+  header{display:flex;align-items:baseline;gap:8px 16px;flex-wrap:wrap;
+         padding:16px 24px;border-bottom:1px solid var(--line)}
   header h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
   header .sub{color:var(--muted);font-size:13px}
   header .status{margin-left:auto;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 
-  .wrap{display:grid;grid-template-columns:270px minmax(0,1fr);
+  .wrap{display:grid;grid-template-columns:300px minmax(0,1fr);
         min-height:calc(100vh - 56px)}
-  @media(max-width:860px){.wrap{grid-template-columns:1fr}}
-  aside{padding:20px 22px 40px;border-right:1px solid var(--line);background:var(--panel)}
-  main{padding:22px 28px 60px;min-width:0}
+  aside{padding:24px 24px 40px;border-right:1px solid var(--line);background:var(--panel)}
+  main{padding:24px 32px 64px;min-width:0}
+  main>*{max-width:880px}
+  #settings>summary{display:none}
 
   label{display:block;font-size:13px;font-weight:600;color:var(--fg);margin:20px 0 6px}
   aside label:first-of-type{margin-top:0}
@@ -61,8 +62,8 @@
   .rng{display:grid;grid-template-columns:1fr 2.6em;align-items:center;gap:8px}
   .rng input[type=range]{width:100%;accent-color:var(--accent);margin:0}
   .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);
-        margin-right:calc(2.6em + 8px)}
-  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+        margin:2px calc(2.6em + 8px) 0 0}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
 
   details{margin-top:14px}
   details>summary{cursor:pointer;color:var(--muted);font-size:13px;list-style:none}
@@ -95,7 +96,7 @@
 
   h2{font-size:13px;color:var(--fg);margin:0 0 10px;font-weight:600}
   h2 .num{font-weight:400;margin-left:6px}
-  .sect{margin-bottom:34px}
+  .sect{margin-bottom:32px}
   .answer{white-space:pre-wrap;font-size:15px;line-height:1.62;max-width:70ch}
   .note{color:var(--muted);font-size:13px;margin:8px 0}
   .gaps{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;
@@ -143,6 +144,15 @@
   .tip b{font-variant-numeric:tabular-nums}
   pre{white-space:pre-wrap;font-family:var(--mono);font-size:12px;color:var(--muted);
       margin:8px 0 0;overflow:auto}
+  @media(max-width:860px){
+    .wrap{grid-template-columns:1fr}
+    aside{border-right:0;border-bottom:1px solid var(--line);padding:16px}
+    main{padding:16px 16px 48px}
+    header .status{margin-left:0}
+    #settings>summary{display:block;margin-top:16px;color:var(--accent);font-size:14px}
+    .hit{grid-template-columns:18px minmax(0,1fr)}
+    .side{grid-column:2;flex-direction:row;align-items:center;gap:16px}
+  }
 </style>
 </head>
 <body>
@@ -178,6 +188,7 @@
       <button id="askSel" disabled>Ask about marked</button>
     </div>
 
+    <details id="settings" open><summary>Settings and filters</summary>
     <label for="alpha">Matching</label>
     <div class="rng"><input type="range" id="alpha" min="0" max="1" step=".05" value=".6">
       <span class="num" id="alpha_v">0.60</span></div>
@@ -202,6 +213,7 @@
     </div>
 
     <div id="facets"></div>
+    </details>
   </aside>
 
   <main>
@@ -486,7 +498,10 @@ function timeline(near){
   };
 }
 
+const narrow = window.matchMedia("(max-width: 860px)");
+
 async function post(path, body){
+  if (narrow.matches) $("settings").open = false;
   $("status").textContent = "working";
   try {
     const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"},
