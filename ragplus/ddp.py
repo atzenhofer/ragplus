@@ -164,8 +164,32 @@ def _filters(pairs: list[str]) -> dict[str, list[str]]:
     return filters
 
 
+FILTER_HELP = """\
+filters are the search parameters of ddp_api; a name may repeat, and its values combine with OR:
+  authority        archive code, e.g. AT-StiAK
+  context          fonds id
+  compilation      compilation id
+  language         language tag, e.g. de, la, cs
+  place_of_issue   place name as written
+  issuer           name as written
+  recipient        name as written
+  witness          name as written
+  form             original, copy, insert, draft, ...
+  material         parchment, paper
+  label            index term
+  layer            e.g. layout:illurk22v7, htr:crnn
+  text_length      short, medium, long
+  has              image, text, seals, date
+  year             range, e.g. 1300..1399
+
+example:
+  python -m ragplus.ddp data/corpus.jsonl authority=AT-StiAK language=de has=text
+"""
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], epilog=FILTER_HELP,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("output", type=Path)
     parser.add_argument("filters", nargs="*", help="search filters as name=value, repeatable")
     parser.add_argument("--query", default="", help="full-text query")
