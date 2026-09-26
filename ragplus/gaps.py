@@ -78,8 +78,8 @@ def analyze(docs: list[Document], dense: np.ndarray, kept_positions: list[int],
         label = FACETS[facet].lower()
         if free_text:
             messages.append(
-                f"Coverage for {label} not reported: {len(corpus_values)} distinct values in "
-                f"this corpus, so it behaves as free text rather than a facet."
+                f"The {label} has {len(corpus_values)} values in this corpus, too many to "
+                f"report its coverage."
             )
         elif absent:
             messages.append(
@@ -91,8 +91,8 @@ def analyze(docs: list[Document], dense: np.ndarray, kept_positions: list[int],
         span = range(min(decades), max(decades) + 10, 10)
         empty_decades = [decade for decade in span if decades.get(decade, 0) == 0]
         if empty_decades:
-            messages.append("Temporal gap: no relevant material in "
-                            + ", ".join(f"{decade}s" for decade in empty_decades) + ".")
+            messages.append("No relevant documents from the "
+                            + _listing([f"{decade}s" for decade in empty_decades]) + ".")
 
     return {
         "messages": messages,

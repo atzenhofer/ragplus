@@ -89,6 +89,11 @@ CONFIDENCE_BASIS = (
 )
 
 
+def _count(number: int, singular: str, plural: str = "") -> str:
+    """The number with the singular or the plural noun."""
+    return f"{number} {singular if number == 1 else plural or singular + 's'}"
+
+
 def _confidence(passage_count: int) -> str:
     """The evidence-count band: low, moderate or reasonable."""
     if passage_count <= 2:
@@ -173,8 +178,9 @@ def answer(index: Index, ctx: search.Context,
         "confidence": _confidence(len(evidence)),
         "confidence_basis": CONFIDENCE_BASIS,
         "confidence_reason": (
-            f"Grounded in {len(evidence)} independent passage(s) across "
-            f"{len(covered_decades)} decade(s) and {len(covered_places)} place(s) of issue."),
+            f"The answer uses {_count(len(evidence), 'independent passage')} from "
+            f"{_count(len(covered_decades), 'decade')} and "
+            f"{_count(len(covered_places), 'place of issue', 'places of issue')}."),
     }
 
     return {

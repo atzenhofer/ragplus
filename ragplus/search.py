@@ -62,6 +62,13 @@ def _different_facets(doc: Document, anchor: Document) -> list[str]:
     return differs + (["period"] if doc.decade != anchor.decade else [])
 
 
+def _and_list(words: list[str]) -> str:
+    """The words as "a", "a and b" or "a, b and c"."""
+    if len(words) < 2:
+        return "".join(words)
+    return ", ".join(words[:-1]) + " and " + words[-1]
+
+
 def _result_row(doc: Document, score: float, badges: list[str], why: str) -> dict:
     row = doc.as_meta()
     row.update(score=round(float(score), 4), badges=badges, why=why,
@@ -119,7 +126,7 @@ def run(index: Index, ctx: Context) -> dict:
                                             count=5, strength=ctx.serendipity)
         for local, score in picks:
             doc = pool_docs[local]
-            why = "relevant but from a different " + "/".join(_different_facets(doc, anchor))
+            why = "relevant, from another " + _and_list(_different_facets(doc, anchor))
             badges = recommend.badges(docs, doc, chosen_decades)
             serendipity.append(_result_row(doc, score, badges, why))
 
