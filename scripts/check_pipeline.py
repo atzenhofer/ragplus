@@ -31,13 +31,13 @@ def main() -> None:
     print(f"\nsearch: {len(result['results'])} results, pool={result['pool_size']}, "
           f"matched={result['filtered_count']}/{result['corpus_size']}")
     for row in result["results"][:5]:
-        print(f"  {row['score']:.3f}  {row['date']}  {row['source']:<18} "
+        print(f"  {row['score']:.3f}  {row['date']}  {row['facets'].get('authority', ['?'])[0][:24]:<24} "
               f"{','.join(row['badges']):<28} {row['title'][:46]}")
 
     print("\ngaps:")
     for message in result["gaps"]["messages"]:
         print(f"  - {message}")
-    print("serendipity sources:", [row["source"] for row in result["serendipity"]])
+    print("serendipity:", [row["facets"].get("authority", ["?"])[0] for row in result["serendipity"]])
 
     print(f"\nllm_available={llm.available()}")
     answer = rag.answer(index, ctx)

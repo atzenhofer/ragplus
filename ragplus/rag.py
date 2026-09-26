@@ -57,10 +57,17 @@ def _passage_text(doc: Document, text_field: str) -> str:
     return doc.tenor if text_field == "tenor" and doc.tenor else f"{doc.title}. {doc.text}"
 
 
+def _passage_header(doc: Document) -> str:
+    """Date and the facets that place a passage, as the prompt shows them."""
+    parts = [doc.date, doc.first("authority"), *doc.facets.get("place_of_issue", [])[:1],
+             *doc.facets.get("language", []), *doc.facets.get("form", [])]
+    return ", ".join(parts)
+
+
 def _passages_block(docs: list[Document], text_field: str = "text") -> str:
     """The numbered passages as the prompt shows them."""
     return "\n\n".join(
-        f"[{number}] ({doc.date}, {doc.source}, {doc.region}, {doc.language}, {doc.genre}) "
+        f"[{number}] ({_passage_header(doc)}) "
         f"{_passage_text(doc, text_field)}"
         for number, doc in enumerate(docs, 1))
 
@@ -145,21 +152,21 @@ def answer(index: Index, ctx: search.Context,
             used_llm = False
 
     covered_decades = sorted({doc.decade for doc in evidence})
-    covered_regions = sorted({doc.region for doc in evidence})
+    covered_places = sorted({doc.first("place_of_issue") for doc in evidence})
     reason = "marked by the scholar" if chosen_by == "scholar" else "top-ranked independent witness"
     artifacts = {
         "selected_sources": [
             {"n": number, "id": doc.id, "title": doc.title, "date": doc.date,
-             "source": doc.source, "region": doc.region, "language": doc.language,
-             "reason": reason}
+             "authority": doc.first("authority"), "place_of_issue": doc.first("place_of_issue"),
+             "language": doc.first("language"), "reason": reason}
             for number, doc in enumerate(evidence, 1)
         ],
         "selection": _selection_record(chosen_by, proposed, evidence),
         "duplicate_note": _duplicate_note(chosen_by, duplicates),
         "coverage": {
             "decades": [f"{decade}s" for decade in covered_decades],
-            "regions": covered_regions,
-            "languages": sorted({doc.language for doc in evidence}),
+            "places_of_issue": covered_places,
+            "languages": sorted({doc.first("language") for doc in evidence}),
             "source_mix": dict(Counter(doc.source for doc in evidence)),
         },
         "gaps": res["gaps"]["messages"],
@@ -167,7 +174,7 @@ def answer(index: Index, ctx: search.Context,
         "confidence_basis": CONFIDENCE_BASIS,
         "confidence_reason": (
             f"Grounded in {len(evidence)} independent passage(s) across "
-            f"{len(covered_decades)} decade(s) and {len(covered_regions)} region(s)."),
+            f"{len(covered_decades)} decade(s) and {len(covered_places)} place(s) of issue."),
     }
 
     return {

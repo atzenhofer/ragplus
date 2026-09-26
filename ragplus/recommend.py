@@ -9,6 +9,9 @@ import numpy as np
 
 from .corpus import Document
 
+# The facets on which serendipity looks for contrast with the top result, besides the decade.
+CONTRAST_FACETS = ("authority", "place_of_issue", "language")
+
 
 def minmax(values: np.ndarray) -> np.ndarray:
     """Scale values to [0, 1]; all zeros when they are constant."""
@@ -27,7 +30,7 @@ def source_frequencies(docs: list[Document]) -> dict[str, int]:
 
 def dominant_language(docs: list[Document]) -> str:
     """The corpus's most common known language; "" when none is recorded."""
-    known = Counter(doc.language for doc in docs if doc.language and doc.language != "unknown")
+    known = Counter(doc.first("language") for doc in docs if doc.first("language") != "unknown")
     return known.most_common(1)[0][0] if known else ""
 
 
@@ -59,15 +62,15 @@ def mmr(relevance: np.ndarray, similarity: np.ndarray, diversity: float, k: int)
 
 
 def facet_diff(doc: Document, other: Document) -> float:
-    """Fraction of the four facets (source, region, decade, language) on which two differ."""
-    differences = [doc.source != other.source, doc.region != other.region,
-                   doc.decade != other.decade, doc.language != other.language]
+    """Fraction of the contrast facets and the decade on which two documents differ."""
+    differences = [doc.first(facet) != other.first(facet) for facet in CONTRAST_FACETS]
+    differences.append(doc.decade != other.decade)
     return sum(differences) / len(differences)
 
 
 def serendipity_picks(pool_docs: list[Document], relevance: np.ndarray, anchor: Document,
                       chosen_ids: set[str], count: int, strength: float) -> list[tuple[int, float]]:
-    """Relevant items from another source, region, decade or language than the top result.
+    """Relevant items from another authority, place, language or decade than the top result.
     Returns (pool_index, score) pairs, best first."""
     if strength <= 0:
         return []
@@ -93,6 +96,7 @@ def badges(docs: list[Document], doc: Document, main_decades: list[int]) -> list
     if doc.derived_from is not None:
         tags.append("near-duplicate")
     main_language = dominant_language(docs)
-    if doc.language and doc.language != "unknown" and main_language and doc.language != main_language:
-        tags.append(f"lang:{doc.language}")
+    language = doc.first("language")
+    if language != "unknown" and main_language and language != main_language:
+        tags.append(f"lang:{language}")
     return tags

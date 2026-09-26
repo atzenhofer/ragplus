@@ -146,10 +146,7 @@
         <span class="chk"><input type="checkbox" id="balance" checked> balance</span></div>
     </div>
 
-    <details><summary>languages</summary><div class="facet" id="f_languages"></div></details>
-    <details><summary>regions</summary><div class="facet" id="f_regions"></div></details>
-    <details><summary>sources</summary><div class="facet" id="f_sources"></div></details>
-    <details><summary>genres</summary><div class="facet" id="f_genres"></div></details>
+    <div id="facets"></div>
   </aside>
 
   <main>
@@ -225,15 +222,19 @@ function showStatus(){
     + " · " + (META.llm_available ? META.llm_model : "no llm");
 }
 
-const checked = box => [...document.querySelectorAll("#" + box + " input:checked")].map(i => i.value);
+function filters(){
+  const chosen = {};
+  document.querySelectorAll("#facets input:checked").forEach(box =>
+    (chosen[box.dataset.facet] ??= []).push(box.value));
+  return chosen;
+}
 
 function payload(){
   const num = id => $(id).value === "" ? null : parseInt($(id).value);
   return {
     query:$("q").value, mode:MODE, text_field:FIELD,
     year_from:num("year_from"), year_to:num("year_to"),
-    languages:checked("f_languages"), regions:checked("f_regions"),
-    sources:checked("f_sources"), genres:checked("f_genres"),
+    filters:filters(),
     k:parseInt($("k").value) || 10,
     alpha:+$("alpha").value, diversity:+$("diversity").value,
     serendipity:+$("serendipity").value, balance_sources:$("balance").checked,
@@ -246,13 +247,15 @@ function hit(r){
   const title = r.url
     ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.title) + "</a>"
     : esc(r.title);
-  const lang = r.language && r.language !== "unknown" ? " · " + esc(r.language) : "";
+  const f = r.facets || {};
+  const meta = [r.date, (f.place_of_issue || [])[0], (f.language || []).join("+"), (f.form || [])[0]]
+    .filter(Boolean).map(esc).join(" · ");
   return '<div class="hit' + (marked ? " picked" : "") + '">'
     + '<div><input type="checkbox" data-pick="' + esc(r.id) + '"' + (marked ? " checked" : "")
     + ' aria-label="mark as evidence"></div>'
     + "<div>"
     + '<div class="t">' + title + "</div>"
-    + '<div class="m">' + esc(r.date) + " · " + esc(r.source) + " · " + esc(r.region) + lang + "</div>"
+    + '<div class="m">' + meta + "</div>"
     + '<div class="s">' + esc(r.snippet) + "</div>"
     + '<div class="w">' + tags + esc(r.why || "") + "</div>"
     + "</div>"
@@ -328,17 +331,17 @@ async function runAsk(ids){
 $("ask").onclick = () => runAsk([]);
 $("askSel").onclick = () => runAsk([...MARKED]);
 
-function facet(box, items){
-  $(box).innerHTML = items.map(i =>
-    '<label><input type="checkbox" value="' + esc(i.value) + '">'
-    + "<span>" + esc(i.value || "—") + '</span><span class="n">' + i.count + "</span></label>"
-  ).join("");
+function facet(f){
+  return "<details><summary>" + esc(f.label.toLowerCase()) + '</summary><div class="facet">'
+    + f.values.map(i =>
+      '<label><input type="checkbox" data-facet="' + esc(f.name) + '" value="' + esc(i.value) + '">'
+      + "<span>" + esc(i.value) + '</span><span class="n">' + i.count + "</span></label>"
+    ).join("") + "</div></details>";
 }
 
 (async () => {
   META = await (await fetch("/api/meta")).json();
-  facet("f_languages", META.languages); facet("f_regions", META.regions);
-  facet("f_sources", META.sources); facet("f_genres", META.genres);
+  $("facets").innerHTML = META.facets.map(facet).join("");
   $("year_from").placeholder = META.year_min;
   $("year_to").placeholder = META.year_max;
   if ((META.text_fields || []).includes("tenor")) $("fieldWrap").style.display = "";

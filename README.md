@@ -9,12 +9,12 @@ The prototype has no tests and several known issues (listed at the end).
 
 ## What it does
 
-- Hybrid retrieval with BM25 and dense embeddings, filtered by year, source, language, region
-  and genre.
-- Re-ranking with MMR diversity and source balancing, a serendipity list, and badges that say
+- Hybrid retrieval with BM25 and dense embeddings, filtered by year and the facets of the
+  records.
+- Re-ranking with MMR diversity and balancing by authority, a serendipity list, and badges that say
   why a result is shown.
-- Gap analysis: relevant documents the filters excluded, and decades, languages and regions
-  that the relevant documents do not cover.
+- Gap analysis: relevant documents the filters excluded, and decades, languages, places of
+  issue and authorities that the relevant documents do not cover.
 - RAG with near-duplicate removal, a cited answer with an uncertainty line, and the selection,
   coverage and confidence behind it. Results the user marks become the evidence.
 
@@ -81,9 +81,6 @@ Limits:
 
 - Every record needs all required fields, or loading stops. Use `unknown` for a missing
   value; `year` must be an integer, so undated items need one.
-- The facets are fixed to `source`, `region`, `language` and `genre`, plus the year. A further
-  facet, such as author, needs changes in `search`, `gaps`, `recommend`, `app` and the UI, or
-  goes into one of the four fields.
 - The gap analysis treats a field with more than 25 distinct values as free text and reports no
   coverage for it. Places often exceed this.
 - Documents are not split into passages. Embeddings see the first `EMBED_MAX_CHARS` characters
@@ -96,16 +93,16 @@ Limits:
 
 1. Embed the query and compute its cosine similarity to every document.
 2. Apply the filters. The year range includes both ends. Facets combine with AND, values within
-   a facet with OR. Removed documents take no part in steps 3 to 8.
+   a facet with OR; a document matches a facet when one of its values is selected. Removed documents take no part in steps 3 to 8.
 3. Score title and text with BM25.
 4. Min-max normalise both scores within the remaining documents and blend them:
    `rel = alpha * dense + (1 - alpha) * bm25`.
-5. If source balance is on: `rel *= 1 + 0.6 * (1 - minmax(log1p(documents per source)))`.
+5. If balance is on: `rel *= 1 + 0.6 * (1 - minmax(log1p(documents per authority)))`.
 6. Keep the top 60 as the pool.
 7. Pick `k` results from the pool with MMR:
    `score = (1 - diversity) * rel - diversity * (highest similarity to a result already picked)`.
 8. Pick up to 5 serendipity items from the rest of the pool:
-   `rel * (share of source, region, decade and language that differ from the top result)`.
+   `rel * (share of authority, place of issue, language and decade that differ from the top result)`.
 9. Run the gap analysis on the 50 documents of the whole corpus with the highest dense score.
 
 ## Settings
@@ -114,8 +111,8 @@ Limits:
 |---|---|---|
 | `alpha` | 0 (BM25) to 1 (dense) | BM25 finds the spelling that was typed; dense retrieval finds paraphrases and spelling variants. Acts before the pool cut, so it decides which documents are candidates. |
 | `diversity` | 0 to 1 | Higher values give results that are less similar to each other and less relevant. Reorders the pool of 60. |
-| `serendipity` | 0 to 1 | Side list of relevant items from other sources, regions, decades or languages. |
-| balance | on or off | Up to 60% more weight for documents from small sources, applied before the pool cut. Trades precision for representation. |
+| `serendipity` | 0 to 1 | Side list of relevant items from other authorities, places, decades or languages. |
+| balance | on or off | Up to 60% more weight for documents from small authorities, applied before the pool cut. Trades precision for representation. |
 | `k` | 1 to 50 | Number of results. The system chooses its evidence from these. |
 | mode | preset | Sets `alpha`, `diversity`, `serendipity` and balance: precision (0.75, 0.10, 0, off), explore (0.60, 0.40, 0.40, on), gap (0.50, 0.70, 0.70, on). The mode name also goes into the LLM prompt. |
 

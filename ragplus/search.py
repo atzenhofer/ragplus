@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from . import gaps, recommend
-from .corpus import Document
+from .corpus import FACETS, Document
 from .index import Index
 
 
@@ -22,10 +22,7 @@ class Context:
     text_field: str = "text"              # text = abstract, tenor = transcription
     year_from: int | None = None
     year_to: int | None = None
-    sources: list[str] = field(default_factory=list)
-    languages: list[str] = field(default_factory=list)
-    regions: list[str] = field(default_factory=list)
-    genres: list[str] = field(default_factory=list)
+    filters: dict[str, list[str]] = field(default_factory=dict)   # facet -> accepted values
     k: int = 10                           # results returned
     pool: int = 60                        # candidate pool before re-ranking
     alpha: float = 0.6                    # lexical(0) .. dense(1)
@@ -50,10 +47,8 @@ def _matches(doc: Document, ctx: Context) -> bool:
         return False
     if ctx.year_to and doc.year > ctx.year_to:
         return False
-    return ((not ctx.sources or doc.source in ctx.sources)
-            and (not ctx.languages or doc.language in ctx.languages)
-            and (not ctx.regions or doc.region in ctx.regions)
-            and (not ctx.genres or doc.genre in ctx.genres))
+    return all(set(doc.facets.get(facet, ())) & set(values)
+               for facet, values in ctx.filters.items() if values)
 
 
 def _filter(index: Index, ctx: Context) -> list[int]:
@@ -62,11 +57,9 @@ def _filter(index: Index, ctx: Context) -> list[int]:
 
 def _different_facets(doc: Document, anchor: Document) -> list[str]:
     """The facets on which the document differs from the anchor."""
-    return [name for name, differs in (("source", doc.source != anchor.source),
-                                       ("period", doc.decade != anchor.decade),
-                                       ("region", doc.region != anchor.region),
-                                       ("language", doc.language != anchor.language))
-            if differs]
+    differs = [FACETS[facet].lower() for facet in recommend.CONTRAST_FACETS
+               if doc.first(facet) != anchor.first(facet)]
+    return differs + (["period"] if doc.decade != anchor.decade else [])
 
 
 def _result_row(doc: Document, score: float, badges: list[str], why: str) -> dict:
@@ -143,5 +136,5 @@ def run(index: Index, ctx: Context) -> dict:
         "text_field": text_field,
         "text_fields": index.fields,
         "on_gpu": index.on_gpu,
-        "source_mix": dict(Counter(row["source"] for row in results)),
+        "source_mix": dict(Counter(pool_docs[local].source for local in chosen_local)),
     }

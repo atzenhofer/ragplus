@@ -5,20 +5,31 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# The facets a document carries, with the label the interface shows, in display order.
+FACETS = {
+    "authority": "Authority",
+    "context": "Context",
+    "language": "Language",
+    "place_of_issue": "Place of issue",
+    "issuer": "Issuer",
+    "recipient": "Recipient",
+    "form": "Form",
+    "material": "Material",
+    "label": "Index term",
+}
+# The facet that source balancing and the rare-source badge count by.
+SOURCE_FACET = "authority"
+
 
 @dataclass
 class Document:
     id: str
     title: str
-    text: str
-    date: str          # ISO YYYY-MM-DD
+    text: str          # the abstract
+    date: str          # ISO YYYY-MM-DD, the first day of the stated range
     year: int
-    source: str        # publication / archive
-    region: str        # place of publication
-    language: str      # de | en | sl | ...
-    genre: str         # news | editorial | review | notice
-    topics: list[str] = field(default_factory=list)
-    # id of the report this one copies, or None if independent
+    facets: dict[str, list[str]] = field(default_factory=dict)
+    # id of the document this one is a version of, or None
     derived_from: str | None = None
     url: str = ""
     tenor: str = ""    # the transcription, where one exists
@@ -26,6 +37,15 @@ class Document:
     @property
     def decade(self) -> int:
         return (self.year // 10) * 10
+
+    @property
+    def source(self) -> str:
+        return self.first(SOURCE_FACET)
+
+    def first(self, facet: str) -> str:
+        """The first value of a facet, or "unknown"."""
+        values = self.facets.get(facet)
+        return values[0] if values else "unknown"
 
     def snippet(self, length: int = 240) -> str:
         """The text on one line, cut to `length` with an ellipsis."""
@@ -35,8 +55,7 @@ class Document:
     def as_meta(self) -> dict:
         return {
             "id": self.id, "title": self.title, "date": self.date, "year": self.year,
-            "source": self.source, "region": self.region, "language": self.language,
-            "genre": self.genre, "topics": self.topics, "derived_from": self.derived_from,
+            "facets": self.facets, "derived_from": self.derived_from,
             "url": self.url, "has_tenor": bool(self.tenor),
         }
 
@@ -51,9 +70,9 @@ def load_corpus(path: str | Path) -> list[Document]:
             record = json.loads(line)
             docs.append(Document(
                 id=record["id"], title=record["title"], text=record["text"],
-                date=record["date"], year=int(record["year"]), source=record["source"],
-                region=record["region"], language=record["language"], genre=record["genre"],
-                topics=list(record.get("topics", [])), derived_from=record.get("derived_from"),
+                date=record["date"], year=int(record["year"]),
+                facets={name: list(values) for name, values in record.get("facets", {}).items()},
+                derived_from=record.get("derived_from"),
                 url=record.get("url", ""), tenor=record.get("tenor", ""),
             ))
     return docs

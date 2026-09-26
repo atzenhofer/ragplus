@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from . import llm, rag, search
 from .config import settings
-from .corpus import load_corpus
+from .corpus import FACETS, load_corpus
 from .index import Index
 from .search import Context
 
@@ -45,10 +45,7 @@ class QueryReq(BaseModel):
     text_field: str = "text"
     year_from: int | None = None
     year_to: int | None = None
-    sources: list[str] = Field(default_factory=list)
-    languages: list[str] = Field(default_factory=list)
-    regions: list[str] = Field(default_factory=list)
-    genres: list[str] = Field(default_factory=list)
+    filters: dict[str, list[str]] = Field(default_factory=dict)
     k: int = 10
     alpha: float = 0.6
     diversity: float = 0.3
@@ -62,7 +59,7 @@ class QueryReq(BaseModel):
 
 def _facet_counts(docs, name: str) -> list[dict]:
     """Values of one facet with their document counts, most common first."""
-    counts = Counter(getattr(doc, name) for doc in docs)
+    counts = Counter(value for doc in docs for value in doc.facets.get(name, ()))
     return [{"value": value, "count": count}
             for value, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))]
 
@@ -75,11 +72,9 @@ def meta() -> dict:
         "corpus_size": len(docs),
         "year_min": min(doc.year for doc in docs),
         "year_max": max(doc.year for doc in docs),
-        "sources": _facet_counts(docs, "source"),
-        "languages": _facet_counts(docs, "language"),
-        "regions": _facet_counts(docs, "region"),
-        "genres": _facet_counts(docs, "genre"),
-        "topics": sorted({topic for doc in docs for topic in doc.topics}),
+        "facets": [{"name": name, "label": label, "values": values}
+                   for name, label in FACETS.items()
+                   if (values := _facet_counts(docs, name))],
         "text_fields": index.fields,
         "embed_model": settings.embed_model,
         "embed_backend": settings.embed_backend,
