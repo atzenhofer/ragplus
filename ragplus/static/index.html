@@ -89,16 +89,22 @@
   .conf .why{color:var(--muted)}
   .conf p{color:var(--muted);margin:6px 0 0;max-width:68ch}
 
-  .hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;
-       padding:11px 0;border-top:1px solid var(--line);align-items:start}
+  .hit{display:grid;grid-template-columns:18px minmax(0,1fr) 112px;gap:12px;
+       padding:14px 8px;border-top:1px solid var(--line);align-items:start;border-radius:6px}
   .hit:last-child{border-bottom:1px solid var(--line)}
   .hit.picked{background:var(--accent-soft)}
-  .hit input{margin:4px 0 0}
-  .hit .t{font-weight:500;line-height:1.35}
+  .hit input{margin:4px 0 0;accent-color:var(--accent)}
+  .hit .t{font-weight:600;line-height:1.35}
+  .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:13px}
+  .side a{color:var(--accent);border:0}
+  .side a:hover{text-decoration:underline}
+  .score{width:64px;height:4px;border-radius:2px;background:var(--line);margin-top:4px}
+  .score i{display:block;height:100%;border-radius:2px;background:var(--accent)}
   .hit .m{color:var(--muted);font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums}
   .hit .s{color:var(--fg);font:15px/1.5 var(--serif);margin-top:6px;max-width:72ch}
   .hit .w{color:var(--muted);font-size:12px;margin-top:4px}
-  .tag{color:var(--accent);font-size:12px;margin-right:8px;white-space:nowrap}
+  .tag{display:inline-block;font-size:12px;margin-right:6px;padding:0 7px;border-radius:9px;
+       background:var(--panel);border:1px solid var(--line);color:var(--fg);white-space:nowrap}
   pre{white-space:pre-wrap;font-family:var(--mono);font-size:12px;color:var(--muted);
       margin:8px 0 0;overflow:auto}
 </style>
@@ -254,25 +260,37 @@ function payload(){
   };
 }
 
-function hit(r){
+const LANGUAGES = {la:"Latin", de:"German", cs:"Czech", hu:"Hungarian", it:"Italian", fr:"French",
+                   sl:"Slovene", pl:"Polish", nds:"Low German", en:"English"};
+const BADGES = {"rare-source":"rare archive", "other-period":"other period",
+                "near-duplicate":"version of another"};
+
+function badgeText(badge){
+  if (badge.startsWith("lang:")) return LANGUAGES[badge.slice(5)] || badge.slice(5);
+  return BADGES[badge] || badge;
+}
+
+function hit(r, top){
   const marked = MARKED.has(r.id);
-  const tags = (r.badges || []).map(b => '<span class="tag">' + esc(b) + "</span>").join("");
+  const tags = (r.badges || []).map(b => '<span class="tag">' + esc(badgeText(b)) + "</span>").join("");
   const link = (url, text) => url
-    ? ' <a class="num" href="' + esc(url) + '" target="_blank" rel="noopener">' + text + "</a>" : "";
-  const title = esc(r.title) + link(r.legacy_url, "Monasterium") + link(r.url, "record");
+    ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + text + "</a>" : "";
+  const share = top > 0 ? Math.max(4, Math.round(100 * r.score / top)) : 0;
   const f = r.facets || {};
-  const meta = [r.date, (f.place_of_issue || [])[0], (f.language || []).join("+"), (f.form || [])[0]]
+  const meta = [r.date, (f.place_of_issue || [])[0], (f.language || []).map(tag => LANGUAGES[tag] || tag).join(", "), (f.form || [])[0]]
     .filter(Boolean).map(esc).join(" · ");
   return '<div class="hit' + (marked ? " picked" : "") + '">'
     + '<div><input type="checkbox" data-pick="' + esc(r.id) + '"' + (marked ? " checked" : "")
     + ' aria-label="mark as evidence"></div>'
     + "<div>"
-    + '<div class="t">' + title + "</div>"
+    + '<div class="t">' + esc(r.title) + "</div>"
     + '<div class="m">' + meta + "</div>"
     + '<div class="s">' + esc(r.snippet) + "</div>"
     + '<div class="w">' + tags + esc(r.why || "") + "</div>"
     + "</div>"
-    + '<div class="num">' + (+r.score).toFixed(3) + "</div>"
+    + '<div class="side">' + link(r.legacy_url, "Monasterium") + link(r.url, "Record")
+    + '<div class="score" title="score ' + (+r.score).toFixed(3) + '"><i style="width:' + share
+    + '%"></i></div></div>'
     + "</div>";
 }
 
@@ -293,15 +311,16 @@ function refreshMarked(){
 }
 
 function renderResults(d){
+  const top = Math.max(0, ...d.results.map(r => r.score));
   $("resSect").style.display = "";
   $("resMeta").textContent =
     d.results.length + " of " + d.filtered_count + " matched · pool " + d.pool_size;
   $("results").innerHTML = d.results.length
-    ? d.results.map(hit).join("")
+    ? d.results.map(r => hit(r, top)).join("")
     : '<div class="note">Nothing matches this context.</div>';
   const ser = d.serendipity || [];
   $("serSect").style.display = ser.length ? "" : "none";
-  $("serendipity").innerHTML = ser.map(hit).join("");
+  $("serendipity").innerHTML = ser.map(r => hit(r, Math.max(0, ...ser.map(x => x.score)))).join("");
   bindPicks(); refreshMarked();
 
   const msgs = (d.gaps && d.gaps.messages) || [];
