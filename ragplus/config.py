@@ -43,6 +43,9 @@ class Settings:
     embed_max_chars: int = int(os.environ.get("EMBED_MAX_CHARS", "16000"))
     embed_retries: int = int(os.environ.get("EMBED_RETRIES", "6"))
 
+    ddp_api_url: str = os.environ.get("DDP_API_URL", "")
+    ddp_web_url: str = os.environ.get("DDP_WEB_URL", "")
+
     corpus_path: Path = Path(os.environ.get("CORPUS_PATH", str(DATA_DIR / "corpus.jsonl")))
 
 
