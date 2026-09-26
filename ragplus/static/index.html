@@ -244,9 +244,9 @@ function payload(){
 function hit(r){
   const marked = MARKED.has(r.id);
   const tags = (r.badges || []).map(b => '<span class="tag">' + esc(b) + "</span>").join("");
-  const title = r.url
-    ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.title) + "</a>"
-    : esc(r.title);
+  const link = (url, text) => url
+    ? ' <a class="num" href="' + esc(url) + '" target="_blank" rel="noopener">' + text + "</a>" : "";
+  const title = esc(r.title) + link(r.legacy_url, "Monasterium") + link(r.url, "record");
   const f = r.facets || {};
   const meta = [r.date, (f.place_of_issue || [])[0], (f.language || []).join("+"), (f.form || [])[0]]
     .filter(Boolean).map(esc).join(" · ");

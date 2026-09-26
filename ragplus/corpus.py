@@ -31,6 +31,7 @@ class Document:
     facets: dict[str, list[str]] = field(default_factory=dict)
     # id of the document this one is a version of, or None
     derived_from: str | None = None
+    legacy_url: str = ""
     url: str = ""
     tenor: str = ""    # the transcription, where one exists
 
@@ -56,7 +57,7 @@ class Document:
         return {
             "id": self.id, "title": self.title, "date": self.date, "year": self.year,
             "facets": self.facets, "derived_from": self.derived_from,
-            "url": self.url, "has_tenor": bool(self.tenor),
+            "legacy_url": self.legacy_url, "url": self.url, "has_tenor": bool(self.tenor),
         }
 
 
@@ -72,7 +73,7 @@ def load_corpus(path: str | Path) -> list[Document]:
                 id=record["id"], title=record["title"], text=record["text"],
                 date=record["date"], year=int(record["year"]),
                 facets={name: list(values) for name, values in record.get("facets", {}).items()},
-                derived_from=record.get("derived_from"),
-                url=record.get("url", ""), tenor=record.get("tenor", ""),
+                tenor=record.get("tenor", ""), derived_from=record.get("derived_from"),
+                legacy_url=record.get("legacy_url", ""), url=record.get("url", ""),
             ))
     return docs
