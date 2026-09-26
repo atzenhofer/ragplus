@@ -17,6 +17,10 @@ from ragplus.index import Index
 from ragplus.search import Context
 
 
+def _authority(row: dict) -> str:
+    return row["facets"].get("authority", ["?"])[0]
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -31,13 +35,14 @@ def main() -> None:
     print(f"\nsearch: {len(result['results'])} results, pool={result['pool_size']}, "
           f"matched={result['filtered_count']}/{result['corpus_size']}")
     for row in result["results"][:5]:
-        print(f"  {row['score']:.3f}  {row['date']}  {row['facets'].get('authority', ['?'])[0][:24]:<24} "
+        authority = _authority(row)[:24]
+        print(f"  {row['score']:.3f}  {row['date']}  {authority:<24} "
               f"{','.join(row['badges']):<28} {row['title'][:46]}")
 
     print("\ngaps:")
     for message in result["gaps"]["messages"]:
         print(f"  - {message}")
-    print("serendipity:", [row["facets"].get("authority", ["?"])[0] for row in result["serendipity"]])
+    print("serendipity:", [_authority(row) for row in result["serendipity"]])
 
     print(f"\nllm_available={llm.available()}")
     answer = rag.answer(index, ctx)

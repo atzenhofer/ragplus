@@ -38,12 +38,14 @@ def _text(record: dict, kind: str) -> str:
 
 def _mentions(record: dict) -> list[dict]:
     """Every mention of the record: those in its texts and those outside a text."""
-    return [mention for text in record["texts"] for mention in text["mentions"]] + record["mentions"]
+    in_texts = [mention for text in record["texts"] for mention in text["mentions"]]
+    return in_texts + record["mentions"]
 
 
 def _named(mentions: list[dict], role: str) -> list[str]:
     """The names in one role, each once, in order of appearance."""
-    return list(dict.fromkeys(mention["surface"] for mention in mentions if mention["role"] == role))
+    names = (mention["surface"] for mention in mentions if mention["role"] == role)
+    return list(dict.fromkeys(names))
 
 
 def _term(tradition: dict, name: str) -> list[str]:
