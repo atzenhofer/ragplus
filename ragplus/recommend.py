@@ -89,7 +89,7 @@ def badges(docs: list[Document], doc: Document, main_decades: list[int]) -> list
     frequencies = source_frequencies(docs)
     median_count = median(frequencies.values()) if frequencies else 0
     tags = []
-    if frequencies.get(doc.source, 0) <= median_count:
+    if len(frequencies) > 1 and frequencies.get(doc.source, 0) <= median_count:
         tags.append("rare-source")
     if main_decades and doc.decade != Counter(main_decades).most_common(1)[0][0]:
         tags.append("other-period")
