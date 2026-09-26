@@ -53,8 +53,8 @@ def _select_evidence(index: Index, results: list[dict], max_passages: int = 6,
 
 
 def _passage_text(doc: Document, text_field: str) -> str:
-    """The passage as retrieved: the text, or the transcription when that was searched."""
-    return doc.htr if text_field == "htr" and doc.htr else f"{doc.title}. {doc.text}"
+    """The passage as retrieved: the text, or the tenor when that was searched."""
+    return doc.tenor if text_field == "tenor" and doc.tenor else f"{doc.title}. {doc.text}"
 
 
 def _passages_block(docs: list[Document], text_field: str = "text") -> str:

@@ -21,7 +21,7 @@ class Document:
     # id of the report this one copies, or None if independent
     derived_from: str | None = None
     url: str = ""
-    htr: str = ""      # machine transcription of the source, where one exists
+    tenor: str = ""    # the transcription, where one exists
 
     @property
     def decade(self) -> int:
@@ -37,7 +37,7 @@ class Document:
             "id": self.id, "title": self.title, "date": self.date, "year": self.year,
             "source": self.source, "region": self.region, "language": self.language,
             "genre": self.genre, "topics": self.topics, "derived_from": self.derived_from,
-            "url": self.url, "has_htr": bool(self.htr),
+            "url": self.url, "has_tenor": bool(self.tenor),
         }
 
 
@@ -54,6 +54,6 @@ def load_corpus(path: str | Path) -> list[Document]:
                 date=record["date"], year=int(record["year"]), source=record["source"],
                 region=record["region"], language=record["language"], genre=record["genre"],
                 topics=list(record.get("topics", [])), derived_from=record.get("derived_from"),
-                url=record.get("url", ""), htr=record.get("htr", ""),
+                url=record.get("url", ""), tenor=record.get("tenor", ""),
             ))
     return docs

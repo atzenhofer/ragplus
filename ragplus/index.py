@@ -32,7 +32,7 @@ class Index:
         self.device = self.encoder.device
         self.on_gpu = self.encoder.on_gpu
         self.gpu_name = self.encoder.gpu_name
-        self.fields = ["text"] + (["htr"] if any(doc.htr for doc in docs) else [])
+        self.fields = ["text"] + (["tenor"] if any(doc.tenor for doc in docs) else [])
         self.embeddings_by_field = {field: self._build_embeddings(docs, field)
                                     for field in self.fields}
         self.embeddings = self.embeddings_by_field["text"]      # (N, D), unit rows
@@ -42,7 +42,7 @@ class Index:
         return self.encoder.encode(texts)
 
     def _field_text(self, doc: Document, field: str) -> str:
-        return doc.htr if field == "htr" else f"{doc.title}. {doc.text}"
+        return doc.tenor if field == "tenor" else f"{doc.title}. {doc.text}"
 
     def _build_embeddings(self, docs: list[Document], field: str) -> np.ndarray:
         texts = [self._field_text(doc, field) for doc in docs]

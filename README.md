@@ -75,7 +75,7 @@ holds in the two corpora.
 | `topics` (optional) | returned with each result | keywords | place names |
 | `derived_from` (optional) | duplicate removal | id of the report it copies | unused |
 | `url` (optional) | link in the result list | none | the charter on Monasterium |
-| `htr` (optional) | second searchable text, UI toggle | none | machine transcription |
+| `tenor` (optional) | second searchable text, UI toggle | none | transcription |
 
 Limits:
 
@@ -137,7 +137,7 @@ answer is correct, is measured nowhere in the pipeline.
   near 0, results and gap messages describe different rankings (`gaps.analyze`).
 - Coverage gaps compare 50 documents with every value in the corpus, so most queries report
   some.
-- BM25 always reads title and text. The transcription toggle changes the dense side only.
+- BM25 always reads title and text. The tenor toggle changes the dense side only.
 - The cache key covers the whole corpus. Changing one document re-embeds all of them; an
   interrupted run resumes from its last 512-document checkpoint.
 - The UI sends no pool size, so the pool is always 60.

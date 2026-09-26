@@ -19,7 +19,7 @@ from .index import Index
 class Context:
     query: str
     mode: str = "explore"                 # precision | explore | gap (label + prompt hint)
-    text_field: str = "text"              # text = summary or full text, htr = transcription
+    text_field: str = "text"              # text = abstract, tenor = transcription
     year_from: int | None = None
     year_to: int | None = None
     sources: list[str] = field(default_factory=list)
@@ -34,7 +34,7 @@ class Context:
     balance_sources: bool = True          # up-weight rare sources
 
     def clamp(self) -> "Context":
-        if self.text_field not in ("text", "htr"):
+        if self.text_field not in ("text", "tenor"):
             self.text_field = "text"
         self.alpha = min(1.0, max(0.0, self.alpha))
         self.diversity = min(1.0, max(0.0, self.diversity))

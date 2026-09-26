@@ -115,8 +115,8 @@
     <div id="fieldWrap" style="display:none">
       <label>Search over</label>
       <div class="seg" id="fields">
-        <button data-field="text" class="on">text</button>
-        <button data-field="htr">transcription</button>
+        <button data-field="text" class="on">abstract</button>
+        <button data-field="tenor">tenor</button>
       </div>
     </div>
 
@@ -217,8 +217,8 @@ document.querySelectorAll("#fields button").forEach(b => b.onclick = () => {
 
 function showStatus(){
   const backend = META.embed_backend === "api" ? "api" : (META.embed_on_gpu ? "gpu" : "cpu");
-  const field = (META.text_fields || []).includes("htr")
-    ? " · " + (FIELD === "htr" ? "transcription" : "text") : "";
+  const field = (META.text_fields || []).includes("tenor")
+    ? " · " + (FIELD === "tenor" ? "tenor" : "abstract") : "";
   $("status").textContent =
     META.corpus_size + " docs · " + META.year_min + "–" + META.year_max
     + " · " + META.embed_model + " (" + backend + ")" + field
@@ -341,7 +341,7 @@ function facet(box, items){
   facet("f_sources", META.sources); facet("f_genres", META.genres);
   $("year_from").placeholder = META.year_min;
   $("year_to").placeholder = META.year_max;
-  if ((META.text_fields || []).includes("htr")) $("fieldWrap").style.display = "";
+  if ((META.text_fields || []).includes("tenor")) $("fieldWrap").style.display = "";
   setMode("explore");
   refreshMarked();
   showStatus();
