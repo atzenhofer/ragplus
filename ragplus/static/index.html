@@ -100,9 +100,11 @@
   .note{color:var(--muted);font-size:13px;margin:8px 0}
   .gaps p{margin:5px 0;padding-left:12px;border-left:2px solid var(--accent);
           color:var(--muted);font-size:13px}
-  .conf{margin-top:14px;padding-left:12px;border-left:2px solid var(--line);font-size:13px}
-  .conf b{font-weight:600}
-  .conf .why{color:var(--muted)}
+  .answer a.cite{color:var(--accent);border:0;font-weight:600;font-variant-numeric:tabular-nums}
+  .answer a.cite:hover{text-decoration:underline}
+  .hit.flash{background:var(--accent-soft);transition:background .6s}
+  .conf{margin-top:14px;font-size:13px;color:var(--muted)}
+  .conf b{font-weight:600;color:var(--fg)}
   .conf p{color:var(--muted);margin:6px 0 0;max-width:68ch}
 
   .hit{display:grid;grid-template-columns:18px minmax(0,1fr) 112px;gap:12px;
@@ -205,9 +207,9 @@
       <div class="answer" id="answer"></div>
       <div class="conf" id="conf">
         <span id="confLine"></span>
-        <details><summary>What confidence means here</summary><p id="confBasis"></p></details>
+        <details><summary>What this means</summary><p id="confBasis"></p></details>
       </div>
-      <details><summary>Selection, coverage, uncertainty</summary><pre id="artifacts"></pre></details>
+      <details><summary>Show the selection record</summary><pre id="artifacts"></pre></details>
     </div>
 
     <div class="sect gaps" id="gapSect" style="display:none">
@@ -315,7 +317,7 @@ function hit(r, top){
   const f = r.facets || {};
   const meta = [r.date, (f.place_of_issue || [])[0], (f.language || []).map(tag => LANGUAGES[tag] || tag).join(", "), (f.form || [])[0]]
     .filter(Boolean).map(esc).join(" · ");
-  return '<div class="hit' + (marked ? " picked" : "") + '">'
+  return '<div class="hit' + (marked ? " picked" : "") + '" id="hit-' + esc(r.id) + '">'
     + '<div><input type="checkbox" data-pick="' + esc(r.id) + '"' + (marked ? " checked" : "")
     + ' aria-label="mark as evidence"></div>'
     + "<div>"
@@ -484,6 +486,33 @@ $("search").onclick = async () => {
   renderResults(await post("/api/search", payload()));
 };
 
+function showAnswer(text, citations){
+  const box = $("answer");
+  box.textContent = "";
+  const idOf = Object.fromEntries(citations.map(citation => [citation.n, citation.id]));
+  let last = 0;
+  for (const match of text.matchAll(/\[(\d+)\]/g)) {
+    box.append(text.slice(last, match.index));
+    last = match.index + match[0].length;
+    const id = idOf[+match[1]];
+    if (!id) { box.append(match[0]); continue; }
+    const cite = document.createElement("a");
+    cite.className = "cite";
+    cite.href = "#hit-" + id;
+    cite.textContent = match[0];
+    cite.onclick = event => {
+      event.preventDefault();
+      const card = document.getElementById("hit-" + id);
+      if (!card) return;
+      card.scrollIntoView({behavior: "smooth", block: "center"});
+      card.classList.add("flash");
+      setTimeout(() => card.classList.remove("flash"), 1600);
+    };
+    box.append(cite);
+  }
+  box.append(text.slice(last));
+}
+
 async function runAsk(ids){
   const body = Object.assign({}, payload(), {selected_ids: ids});
   const d = await post("/api/rag", body);
@@ -493,10 +522,9 @@ async function runAsk(ids){
     (d.used_llm ? META.llm_model : "no LLM") + " · " + d.citations.length
     + " passages · evidence chosen by " + sel.by
     + " · confidence " + d.artifacts.confidence;
-  $("answer").textContent = d.answer;
+  showAnswer(d.answer, d.citations);
   const a = d.artifacts;
-  $("confLine").innerHTML = "confidence <b>" + esc(a.confidence) + "</b> "
-    + '<span class="why">' + esc(a.confidence_reason) + "</span>";
+  $("confLine").innerHTML = "Confidence <b>" + esc(a.confidence) + "</b>. " + esc(a.confidence_reason);
   $("confBasis").textContent = a.confidence_basis || "";
   $("artifacts").textContent = JSON.stringify(a, null, 2);
   renderResults(d);
