@@ -79,7 +79,9 @@ def serendipity_picks(pool_docs: list[Document], relevance: np.ndarray, anchor: 
     for position, doc in enumerate(pool_docs):
         if doc.id in chosen_ids or doc.id == anchor.id:
             continue
-        scored.append((position, float(scaled[position]) * facet_diff(doc, anchor)))
+        difference = facet_diff(doc, anchor)
+        if difference > 0:
+            scored.append((position, float(scaled[position]) * difference))
     scored.sort(key=lambda pair: pair[1], reverse=True)
     return scored[:count]
 
