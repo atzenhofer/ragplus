@@ -7,13 +7,13 @@
 <style>
   :root{
     --bg:#ffffff; --panel:#f5f6f7; --fg:#1b1e22; --muted:#5b6470; --line:#dfe2e6;
-    --accent:#1f5fa8; --accent-soft:#e3edf8;
+    --accent:#1f5fa8; --accent-soft:#e3edf8; --bar:#8b949e;
     --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
   }
   @media (prefers-color-scheme:dark){
     :root{--bg:#15171a; --panel:#1c1f23; --fg:#e6e8eb; --muted:#9aa3ad; --line:#2e3339;
-          --accent:#6ea4e6; --accent-soft:#1f3350;}
+          --accent:#6ea4e6; --accent-soft:#1f3350; --bar:#6b7480;}
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);
@@ -105,6 +105,20 @@
   .hit .w{color:var(--muted);font-size:12px;margin-top:4px}
   .tag{display:inline-block;font-size:12px;margin-right:6px;padding:0 7px;border-radius:9px;
        background:var(--panel);border:1px solid var(--line);color:var(--fg);white-space:nowrap}
+  .timeline{position:relative;max-width:820px}
+  .timeline svg{display:block;width:100%;touch-action:none;cursor:crosshair}
+  .timeline text{font-size:12px;fill:var(--muted)}
+  .timeline .row{font-size:13px;fill:var(--fg)}
+  .timeline .base{stroke:var(--line);stroke-width:1}
+  .timeline .corpus{fill:var(--bar)}
+  .timeline .near{fill:var(--accent)}
+  .timeline .band{fill:var(--accent-soft)}
+  .timeline .hover{fill:var(--fg);opacity:0}
+  .timeline .hover:hover{opacity:.06}
+  .tip{position:absolute;pointer-events:none;background:var(--bg);border:1px solid var(--line);
+       border-radius:6px;padding:6px 10px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.12);
+       white-space:nowrap;display:none}
+  .tip b{font-variant-numeric:tabular-nums}
   pre{white-space:pre-wrap;font-family:var(--mono);font-size:12px;color:var(--muted);
       margin:8px 0 0;overflow:auto}
 </style>
@@ -182,6 +196,11 @@
     <div class="sect gaps" id="gapSect" style="display:none">
       <h2>Gaps</h2>
       <div id="gaps"></div>
+    </div>
+
+    <div class="sect" id="timeSect" style="display:none">
+      <h2>Time <span class="num">documents per decade; drag across the chart to set the years</span></h2>
+      <div class="timeline" id="timeline"></div>
     </div>
 
     <div class="sect" id="resSect" style="display:none">
@@ -323,9 +342,114 @@ function renderResults(d){
   $("serendipity").innerHTML = ser.map(r => hit(r, Math.max(0, ...ser.map(x => x.score)))).join("");
   bindPicks(); refreshMarked();
 
+  const near = (((d.gaps || {}).coverage || {}).decade || {}).neighbourhood || {};
+  timeline(near);
+
   const msgs = (d.gaps && d.gaps.messages) || [];
   $("gapSect").style.display = msgs.length ? "" : "none";
   $("gaps").innerHTML = msgs.map(m => "<p>" + esc(m) + "</p>").join("");
+}
+
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs, parent){
+  const node = document.createElementNS(SVG, tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  parent.appendChild(node);
+  return node;
+}
+
+function column(g, x, width, base, height, cls){
+  if (height <= 0) return;
+  const r = Math.min(4, height, width / 2);
+  const top = base - height;
+  svg("path", {class: cls, d: `M${x},${base}V${top + r}Q${x},${top} ${x + r},${top}`
+    + `H${x + width - r}Q${x + width},${top} ${x + width},${top + r}V${base}Z`}, g);
+}
+
+function timeline(near){
+  const box = $("timeline");
+  box.textContent = "";
+  const decades = META.decades || [];
+  $("timeSect").style.display = decades.length > 1 ? "" : "none";
+  if (decades.length < 2) return;
+  const first = decades[0].decade, last = decades[decades.length - 1].decade;
+  const span = [];
+  for (let decade = first; decade <= last; decade += 10) span.push(decade);
+  const corpus = Object.fromEntries(decades.map(row => [row.decade, row.count]));
+  const nearCount = decade => near[decade] || 0;
+
+  const width = Math.max(320, box.clientWidth || 800), left = 0, rowHeight = 44;
+  const slot = (width - left) / span.length, bar = Math.max(2, Math.min(24, slot - 2));
+  const rows = [{y: 22, label: "Corpus", value: decade => corpus[decade] || 0, cls: "corpus"},
+                {y: 22 + rowHeight + 30, label: "Closest 50 to the question", value: nearCount, cls: "near"}];
+  const height = rows[1].y + rowHeight + 24;
+  const chart = svg("svg", {viewBox: `0 0 ${width} ${height}`, role: "img",
+    "aria-label": "Documents per decade in the corpus and among the 50 closest to the question"}, box);
+  const band = svg("rect", {class: "band", y: 0, height: height - 18, width: 0}, chart);
+
+  for (const row of rows) {
+    const peak = Math.max(1, ...span.map(row.value));
+    const base = row.y + rowHeight;
+    svg("text", {class: "row", x: left, y: row.y - 6}, chart).textContent = row.label + ", up to " + peak;
+    span.forEach((decade, position) =>
+      column(chart, left + position * slot + (slot - bar) / 2, bar, base,
+             rowHeight * row.value(decade) / peak, row.cls));
+    svg("line", {class: "base", x1: left, x2: width, y1: base + .5, y2: base + .5}, chart);
+  }
+  const fits = Math.floor(width / 60);
+  const every = [10, 20, 50, 100, 200, 500].find(years => span.length * 10 / years <= fits) || 1000;
+  span.forEach((decade, position) => {
+    const x = left + position * slot + slot / 2;
+    if (decade % every || x < 16 || x > width - 16) return;
+    svg("text", {x, y: height - 4, "text-anchor": "middle"}, chart).textContent = decade;
+  });
+
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  box.appendChild(tip);
+  const decadeAt = event => {
+    const bounds = chart.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) * width / bounds.width;
+    return span[Math.max(0, Math.min(span.length - 1, Math.floor((x - left) / slot)))];
+  };
+  const shade = (from, to) => {
+    const low = Math.min(from, to), high = Math.max(from, to);
+    band.setAttribute("x", left + (low - first) / 10 * slot);
+    band.setAttribute("width", ((high - low) / 10 + 1) * slot);
+  };
+  const yearFrom = parseInt($("year_from").value), yearTo = parseInt($("year_to").value);
+  if (yearFrom || yearTo) shade(Math.floor((yearFrom || first) / 10) * 10, Math.floor((yearTo || last) / 10) * 10);
+
+  let start = null;
+  chart.onpointermove = event => {
+    const decade = decadeAt(event);
+    tip.textContent = "";
+    const heading = document.createElement("div");
+    heading.textContent = decade + "s";
+    const counts = document.createElement("div");
+    counts.innerHTML = "<b>" + (corpus[decade] || 0) + "</b> in the corpus, <b>" + nearCount(decade)
+      + "</b> among the closest";
+    tip.append(heading, counts);
+    const bounds = box.getBoundingClientRect();
+    tip.style.display = "block";
+    tip.style.left = Math.min(event.clientX - bounds.left + 12, bounds.width - 230) + "px";
+    tip.style.top = (event.clientY - bounds.top + 12) + "px";
+    if (start !== null) shade(start, decade);
+  };
+  chart.onpointerleave = () => { tip.style.display = "none"; };
+  chart.onpointerdown = event => {
+    start = decadeAt(event);
+    chart.setPointerCapture(event.pointerId);
+    shade(start, start);
+  };
+  chart.onpointerup = event => {
+    if (start === null) return;
+    const end = decadeAt(event);
+    $("year_from").value = Math.min(start, end);
+    $("year_to").value = Math.max(start, end) + 9;
+    start = null;
+    $("search").click();
+  };
 }
 
 async function post(path, body){
