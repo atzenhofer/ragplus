@@ -72,6 +72,8 @@ def meta() -> dict:
         "corpus_size": len(docs),
         "year_min": min(doc.year for doc in docs),
         "year_max": max(doc.year for doc in docs),
+        "decades": [{"decade": decade, "count": count}
+                    for decade, count in sorted(Counter(doc.decade for doc in docs).items())],
         "facets": [{"name": name, "label": label, "values": values}
                    for name, label in FACETS.items()
                    if (values := _facet_counts(docs, name))],
