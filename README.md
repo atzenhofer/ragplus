@@ -40,52 +40,37 @@ The first start embeds the corpus and stores the matrix in `.cache/`; later star
 For embeddings on your own machine: `uv sync --extra local-embed`, then `EMBED_BACKEND=local`
 and a Hugging Face model id in `EMBED_MODEL`.
 
-## Corpora
+## Corpus
 
-The app runs on whichever corpus file it is given: `./run.sh` uses `data/corpus.jsonl`,
-`./run.sh path/to/file.jsonl` uses that file. Two corpora exist.
+The corpus is built from ddp_api and written to a JSONL file that stays out of the
+repository, one line per document:
 
-**Synthetic news, in the repository.** `data/corpus.jsonl` holds 408 invented news items from
-1820 to 1928, written by `data/generate_corpus.py` (seed 42). The newspapers, people and
-articles are invented; the cities are real. Every text is English, and the language field is
-only a label. The corpus has uneven facets and clusters of wire copies, so the gap analysis and
-the duplicate removal have something to report. It exists so the app can be tried without any
-data of your own.
+```bash
+.venv/bin/python -m ragplus.ddp data/corpus.jsonl authority=AT-StiAK language=de has=text
+```
 
-**Charters, not in the repository.** The corpus the prototype is built for. It holds the charters
-of one archive from [Monasterium](https://www.monasterium.net), one record per charter, with the
-regest and, where one exists, the machine transcription of the original. The data is not published
-here; it is shared directly on request. It has the same format, so `./run.sh charters.jsonl`
-runs it.
+Each `name=value` is a search filter of ddp_api and can repeat. `--query` adds a full-text
+query, `--limit` caps the count. Records without a date or without any text are skipped
+and counted. `./run.sh` uses `data/corpus.jsonl`, `./run.sh path/to/file.jsonl` uses that
+file.
 
-The format is one JSON object per line with these fields. The last two columns show what each
-holds in the two corpora.
-
-| Field | Used for | Synthetic news | Charters |
-|---|---|---|---|
-| `id` | citations, marking results | item id | charter md5 |
-| `title` | display, BM25, embeddings, LLM passages | headline and newspaper | signature and place of issue |
-| `text` | BM25, embeddings, LLM passages | article text | regest |
-| `date` | display, LLM passages | date of publication, YYYY-MM-DD | date of issue; a range keeps its first day |
-| `year` | year filter, decades | year of publication | year of issue |
-| `source` | filter, source balance, badges, serendipity | newspaper | archive |
-| `region` | filter, gap analysis, serendipity | city | place of issue, or `unknown` |
-| `language` | filter, gap analysis, badges, serendipity | label | `unknown` where the record has none |
-| `genre` | filter | news, editorial, review, notice | `charter:original`, `charter:copy`, `charter:draft`, `charter:mixed`, `charter:unknown` |
-| `topics` (optional) | returned with each result | keywords | place names |
-| `derived_from` (optional) | duplicate removal | id of the report it copies | unused |
-| `url` (optional) | link in the result list | none | the charter on Monasterium |
-| `tenor` (optional) | second searchable text, UI toggle | none | transcription |
+| Field | Used for | Holds |
+|---|---|---|
+| `id` | citations, marking results | the document id |
+| `title` | display, BM25, embeddings, LLM passages | authority and descriptor |
+| `text` | BM25, embeddings, LLM passages | the abstract; the start of the tenor when there is no abstract |
+| `tenor` | second searchable text, UI toggle | the transcription, where the record has one |
+| `date`, `year` | display, year filter, decades | the first day of the stated date |
+| `facets` | filters, gap analysis, balance, badges, serendipity | authority, context, language, place of issue, issuer, recipient, form, material, index term |
+| `derived_from` | duplicate removal | the document this one is a version of, when both are in the corpus |
+| `legacy_url`, `url` | links in the result list | the Monasterium page, and the document page when `DDP_WEB_URL` is set |
 
 Limits:
 
-- Every record needs all required fields, or loading stops. Use `unknown` for a missing
-  value; `year` must be an integer, so undated items need one.
-- The gap analysis treats a field with more than 25 distinct values as free text and reports no
-  coverage for it. Places often exceed this.
+- The gap analysis treats a facet with more than 25 distinct values as free text and reports
+  no coverage for it. Places often exceed this.
 - Documents are not split into passages. Embeddings see the first `EMBED_MAX_CHARS` characters
   of each text, 16,000 by default.
-- Other fields in a record are ignored.
 
 ## How a search runs
 
@@ -138,22 +123,20 @@ answer is correct, is measured nowhere in the pipeline.
 - The cache key covers the whole corpus. Changing one document re-embeds all of them; an
   interrupted run resumes from its last 512-document checkpoint.
 - The UI sends no pool size, so the pool is always 60.
-- In the example corpus, language filters and language badges follow the labels, while all
-  texts are English.
 - There are no tests; `scripts/check_pipeline.py` is the only check.
 - The local embedding backend has not been tested with the current dependencies.
 
 ## Layout
 
 ```
-ragplus/    app, config, corpus, embed, index, search, recommend, gaps, rag, llm, static/index.html
-data/       corpus.jsonl and generate_corpus.py
+ragplus/    app, config, corpus, ddp, embed, index, search, recommend, gaps, rag, llm, static/index.html
+data/       built corpora, not in the repository
 scripts/    check_pipeline.py
 ```
 
 ## Disclaimer
 
-The web interface (`ragplus/static/index.html`), synthetic data (`data/generate_corpus.py` and the `data/corpus.jsonl` it writes) was fully generated with Claude Opus 5.
+The web interface (`ragplus/static/index.html`) was fully generated with Claude Opus 5.
 
 ## License
 

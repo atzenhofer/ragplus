@@ -1,6 +1,6 @@
 """Offline pipeline check: build the index, run a search and a RAG answer, print a summary.
 
-Run from the repo root:  .venv/bin/python scripts/check_pipeline.py
+Run from the repo root:  .venv/bin/python scripts/check_pipeline.py ["query"]
 """
 from __future__ import annotations
 
@@ -29,8 +29,8 @@ def main() -> None:
     print(f"corpus={len(docs)}  embed={settings.embed_model}  "
           f"device={index.device}  gpu={index.gpu_name}")
 
-    ctx = Context(query="imagery of urban poverty in the mid-19th century",
-                  mode="explore", k=6)
+    query = sys.argv[1] if len(sys.argv) > 1 else "Verkauf eines Weingartens gegen Burgrecht"
+    ctx = Context(query=query, mode="explore", k=6)
     result = search.run(index, ctx)
     print(f"\nsearch: {len(result['results'])} results, pool={result['pool_size']}, "
           f"matched={result['filtered_count']}/{result['corpus_size']}")

@@ -26,7 +26,7 @@ log = logging.getLogger("uvicorn.error")
 async def lifespan(app: FastAPI):
     if not settings.corpus_path.exists():
         raise SystemExit(f"corpus not found: {settings.corpus_path}\n"
-                         "Set CORPUS_PATH to a corpus jsonl.")
+                         "Build one with `python -m ragplus.ddp`, or set CORPUS_PATH.")
     docs = load_corpus(settings.corpus_path)
     log.info("corpus %s: %s documents", settings.corpus_path, len(docs))
     log.info("embeddings: %s via %s", settings.embed_model, settings.embed_backend)
