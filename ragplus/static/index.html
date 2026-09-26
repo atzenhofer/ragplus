@@ -9,6 +9,7 @@
     --bg:#ffffff; --panel:#f5f6f7; --fg:#1b1e22; --muted:#5b6470; --line:#dfe2e6;
     --accent:#1f5fa8; --accent-soft:#e3edf8;
     --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
   }
   @media (prefers-color-scheme:dark){
     :root{--bg:#15171a; --panel:#1c1f23; --fg:#e6e8eb; --muted:#9aa3ad; --line:#2e3339;
@@ -20,13 +21,13 @@
        -webkit-font-smoothing:antialiased}
   a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
   a:hover{border-color:var(--fg)}
-  .num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .num{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
 
   header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
          padding:20px 28px 14px;border-bottom:1px solid var(--line)}
   header h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
   header .sub{color:var(--muted);font-size:13px}
-  header .status{margin-left:auto;color:var(--muted);font-size:12px;font-family:var(--mono)}
+  header .status{margin-left:auto;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 
   .wrap{display:grid;grid-template-columns:270px minmax(0,1fr);
         min-height:calc(100vh - 56px)}
@@ -34,8 +35,7 @@
   aside{padding:20px 22px 40px;border-right:1px solid var(--line);background:var(--panel)}
   main{padding:22px 28px 60px;min-width:0}
 
-  label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-        color:var(--muted);margin:20px 0 6px}
+  label{display:block;font-size:13px;font-weight:600;color:var(--fg);margin:20px 0 6px}
   aside label:first-of-type{margin-top:0}
   textarea,input[type=number]{width:100%;font:inherit;color:var(--fg);background:transparent;
         border:0;border-bottom:1px solid var(--line);padding:4px 0}
@@ -58,18 +58,18 @@
   .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
   details{margin-top:14px}
-  details>summary{cursor:pointer;color:var(--muted);font-size:12px;list-style:none}
+  details>summary{cursor:pointer;color:var(--muted);font-size:13px;list-style:none}
   details>summary::-webkit-details-marker{display:none}
   details>summary::before{content:"+ ";font-family:var(--mono)}
   details[open]>summary::before{content:"\2212 "}
   .facet{max-height:160px;overflow:auto;margin-top:6px}
   .facet label{display:flex;gap:8px;align-items:center;margin:0;padding:2px 0;
-        font-size:13px;text-transform:none;letter-spacing:0;color:var(--fg);cursor:pointer}
-  .facet label .n{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+        font-size:13px;font-weight:400;color:var(--fg);cursor:pointer}
+  .facet label .n{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   .chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--fg);cursor:pointer}
 
-  h2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
-     margin:0 0 10px;font-weight:600}
+  h2{font-size:13px;color:var(--fg);margin:0 0 10px;font-weight:600}
+  h2 .num{font-weight:400;margin-left:6px}
   .sect{margin-bottom:34px}
   .answer{white-space:pre-wrap;font-size:15px;line-height:1.62;max-width:70ch}
   .note{color:var(--muted);font-size:13px;margin:8px 0}
@@ -86,11 +86,11 @@
   .hit.picked{background:var(--accent-soft)}
   .hit input{margin:4px 0 0}
   .hit .t{font-weight:500;line-height:1.35}
-  .hit .m{color:var(--muted);font-size:12px;margin-top:2px;font-family:var(--mono)}
-  .hit .s{color:var(--fg);font-size:13.5px;margin-top:5px;max-width:78ch}
-  .hit .w{color:var(--muted);font-size:11.5px;margin-top:4px}
-  .tag{color:var(--accent);font-size:11px;margin-right:8px;white-space:nowrap}
-  pre{white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  .hit .m{color:var(--muted);font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .hit .s{color:var(--fg);font:15px/1.5 var(--serif);margin-top:6px;max-width:72ch}
+  .hit .w{color:var(--muted);font-size:12px;margin-top:4px}
+  .tag{color:var(--accent);font-size:12px;margin-right:8px;white-space:nowrap}
+  pre{white-space:pre-wrap;font-family:var(--mono);font-size:12px;color:var(--muted);
       margin:8px 0 0;overflow:auto}
 </style>
 </head>
@@ -126,13 +126,13 @@
       <button id="search" class="ghost">Search</button>
     </div>
 
-    <label>lexical &mdash; semantic</label>
+    <label>Lexical &ndash; semantic</label>
     <div class="rng"><input type="range" id="alpha" min="0" max="1" step=".05" value=".6">
       <span class="num" id="alpha_v">0.60</span></div>
-    <label>relevance &mdash; diversity</label>
+    <label>Relevance &ndash; diversity</label>
     <div class="rng"><input type="range" id="diversity" min="0" max="1" step=".05" value=".4">
       <span class="num" id="diversity_v">0.40</span></div>
-    <label>serendipity</label>
+    <label>Serendipity</label>
     <div class="rng"><input type="range" id="serendipity" min="0" max="1" step=".05" value=".4">
       <span class="num" id="serendipity_v">0.40</span></div>
 
@@ -155,9 +155,9 @@
       <div class="answer" id="answer"></div>
       <div class="conf" id="conf">
         <span id="confLine"></span>
-        <details><summary>what confidence means here</summary><p id="confBasis"></p></details>
+        <details><summary>What confidence means here</summary><p id="confBasis"></p></details>
       </div>
-      <details><summary>selection, coverage, uncertainty</summary><pre id="artifacts"></pre></details>
+      <details><summary>Selection, coverage, uncertainty</summary><pre id="artifacts"></pre></details>
     </div>
 
     <div class="sect gaps" id="gapSect" style="display:none">
@@ -332,7 +332,7 @@ $("ask").onclick = () => runAsk([]);
 $("askSel").onclick = () => runAsk([...MARKED]);
 
 function facet(f){
-  return "<details><summary>" + esc(f.label.toLowerCase()) + '</summary><div class="facet">'
+  return "<details><summary>" + esc(f.label) + '</summary><div class="facet">'
     + f.values.map(i =>
       '<label><input type="checkbox" data-facet="' + esc(f.name) + '" value="' + esc(i.value) + '">'
       + "<span>" + esc(i.value) + '</span><span class="n">' + i.count + "</span></label>"
