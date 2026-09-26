@@ -20,12 +20,13 @@ The prototype has no tests and several known issues (listed at the end).
 
 ## Setup
 
-Requires [uv](https://docs.astral.sh/uv/) and an OpenAI-compatible endpoint that serves a chat
-model and an embedding model. The repository contains no keys.
+Requires [uv](https://docs.astral.sh/uv/), ddp_api, and an OpenAI-compatible endpoint that
+serves a chat model and an embedding model. The repository contains no keys and no data.
 
 ```bash
 uv sync
-cp .env.example .env    # set your key and, for another provider, base URL and model names
+cp .env.example .env    # set your key, DDP_API_URL and, for another provider, base URL and model names
+.venv/bin/python -m ragplus.ddp data/corpus.jsonl authority=AT-StiAK language=de has=text
 ./run.sh                # UI at http://localhost:8000
 ```
 
