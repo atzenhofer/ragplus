@@ -71,10 +71,26 @@
         border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
         transform:rotate(-45deg);transition:transform .15s}
   details[open]>summary::before{transform:rotate(45deg)}
-  .facet{max-height:160px;overflow:auto;margin-top:6px}
-  .facet label{display:flex;gap:8px;align-items:center;margin:0;padding:2px 0;
-        font-size:13px;font-weight:400;color:var(--fg);cursor:pointer}
+  .facet{margin-top:6px}
+  .facet label{position:relative;display:flex;gap:8px;align-items:center;margin:1px 0;padding:3px 4px;
+        font-size:13px;font-weight:400;color:var(--fg);cursor:pointer;border-radius:4px}
+  .facet label .bar{position:absolute;left:0;top:0;bottom:0;background:var(--accent-soft);
+        border-radius:4px;z-index:0}
+  .facet label>*:not(.bar){position:relative;z-index:1}
   .facet label .n{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .facet label.more{display:none}
+  .facet.all label.more{display:flex}
+  .facet label.hide,.facet.all label.hide{display:none}
+  .facet input[type=search]{width:100%;font:inherit;font-size:13px;color:var(--fg);background:var(--bg);
+        border:1px solid var(--line);border-radius:6px;padding:4px 8px;margin:4px 0 6px}
+  .facet button.all-toggle{background:0;border:0;padding:4px;color:var(--accent);font:inherit;
+        font-size:13px;cursor:pointer}
+  details>summary .count{color:var(--accent);margin-left:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+  .chips:empty{display:none}
+  .chips button{font:inherit;font-size:13px;padding:2px 10px;border-radius:12px;cursor:pointer;
+        border:1px solid var(--accent);background:var(--accent-soft);color:var(--fg)}
+  .chips button span{color:var(--muted);margin-right:4px}
   .chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--fg);cursor:pointer}
 
   h2{font-size:13px;color:var(--fg);margin:0 0 10px;font-weight:600}
@@ -183,6 +199,7 @@
   </aside>
 
   <main>
+    <div class="chips" id="chips"></div>
     <div class="sect" id="answerSect" style="display:none">
       <h2>Answer <span class="num" id="answerMeta"></span></h2>
       <div class="answer" id="answer"></div>
@@ -487,17 +504,66 @@ async function runAsk(ids){
 $("ask").onclick = () => runAsk([]);
 $("askSel").onclick = () => runAsk([...MARKED]);
 
+const SHOWN = 8, SEARCHABLE = 20;
+
 function facet(f){
-  return "<details><summary>" + esc(f.label) + '</summary><div class="facet">'
-    + f.values.map(i =>
-      '<label><input type="checkbox" data-facet="' + esc(f.name) + '" value="' + esc(i.value) + '">'
-      + "<span>" + esc(i.value) + '</span><span class="n">' + i.count + "</span></label>"
-    ).join("") + "</div></details>";
+  const peak = Math.max(1, ...f.values.map(i => i.count));
+  const rows = f.values.map((i, position) =>
+    '<label' + (position >= SHOWN ? ' class="more"' : "") + '>'
+    + '<span class="bar" style="width:' + (100 * i.count / peak).toFixed(1) + '%"></span>'
+    + '<input type="checkbox" data-facet="' + esc(f.name) + '" data-label="' + esc(f.label)
+    + '" value="' + esc(i.value) + '">'
+    + "<span>" + esc(i.value) + '</span><span class="n">' + i.count + "</span></label>").join("");
+  const filter = f.values.length > SEARCHABLE
+    ? '<input type="search" placeholder="Filter ' + f.values.length + ' values" aria-label="Filter '
+      + esc(f.label) + '">' : "";
+  const more = f.values.length > SHOWN
+    ? '<button class="all-toggle" type="button">Show all ' + f.values.length + "</button>" : "";
+  return '<details data-facet="' + esc(f.name) + '"><summary>' + esc(f.label)
+    + '<span class="count"></span></summary><div class="facet">' + filter + rows + more + "</div></details>";
+}
+
+function bindFacets(){
+  document.querySelectorAll("#facets .facet").forEach(box => {
+    const toggle = box.querySelector(".all-toggle");
+    if (toggle) toggle.onclick = () => {
+      box.classList.toggle("all");
+      toggle.textContent = box.classList.contains("all")
+        ? "Show fewer" : "Show all " + box.querySelectorAll("label").length;
+    };
+    const search = box.querySelector("input[type=search]");
+    if (search) search.oninput = () => {
+      const needle = search.value.trim().toLowerCase();
+      box.classList.toggle("all", needle !== "");
+      box.querySelectorAll("label").forEach(row =>
+        row.classList.toggle("hide", needle !== "" && !row.textContent.toLowerCase().includes(needle)));
+    };
+  });
+  document.querySelectorAll("#facets input[type=checkbox]").forEach(box => box.onchange = showChips);
+}
+
+function showChips(){
+  const chips = $("chips");
+  chips.textContent = "";
+  document.querySelectorAll("#facets details").forEach(group => {
+    const count = group.querySelectorAll("input:checked").length;
+    group.querySelector(".count").textContent = count ? count : "";
+  });
+  document.querySelectorAll("#facets input[type=checkbox]:checked").forEach(box => {
+    const chip = document.createElement("button");
+    const name = document.createElement("span");
+    name.textContent = box.dataset.label;
+    chip.append(name, box.value + " \u00d7");
+    chip.title = "Remove this filter";
+    chip.onclick = () => { box.checked = false; showChips(); $("search").click(); };
+    chips.appendChild(chip);
+  });
 }
 
 (async () => {
   META = await (await fetch("/api/meta")).json();
   $("facets").innerHTML = META.facets.map(facet).join("");
+  bindFacets();
   $("year_from").placeholder = META.year_min;
   $("year_to").placeholder = META.year_max;
   if ((META.text_fields || []).includes("tenor")) $("fieldWrap").style.display = "";
